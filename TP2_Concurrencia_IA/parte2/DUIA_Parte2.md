@@ -1,0 +1,10 @@
+# Declaración de Uso de IA (DUIA) - Parte 2 (Concurrencia)
+
+| Campo | Completar |
+| :--- | :--- |
+| **Herramienta** | Claude (asistente de codificación), usado como guía interactiva paso a paso para diseñar y verificar los escenarios de concurrencia. |
+| **Spec o prompt utilizado** | Se pidió reproducir al menos tres escenarios de concurrencia (lectura no repetible, lectura fantasma, espera por bloqueo) sobre las tablas propias del proyecto FoodStore (`producto`, `pedido`), indicando en cada caso qué comandos ejecutar en cada sesión y qué nivel de aislamiento o mecanismo verificar. |
+| **Qué generó** | Los comandos SQL exactos para cada sesión (Sesión A / Sesión B) en cada escenario, la explicación teórica de por qué ocurre cada fenómeno en `READ COMMITTED`, y qué nivel de aislamiento o mecanismo lo evita. |
+| **Qué se aceptó** | Los comandos SQL propuestos y la estructura del informe se usaron tal cual, ya que se correspondían exactamente con lo pedido en la consigna (sección 5.1 y 5.3 del TP2). |
+| **Qué se modificó o descartó, y por qué** | Se agregó el paso de resetear la copia de trabajo (`dropdb` + `createdb -T foodstore_dev`) entre cada prueba de aislamiento distinto, porque sin ese reseteo el segundo experimento arrancaría desde un estado ya modificado por el primero y los resultados dejarían de ser comparables. |
+| **Verificación realizada** | Los tres escenarios se reprodujeron efectivamente con dos sesiones `psql` concurrentes sobre `foodstore_copia_trabajo`: 1) lectura no repetible en `READ COMMITTED` (1050.00 → 1200.00) y control en `REPEATABLE READ` (se mantuvo en 1050.00); 2) lectura fantasma en `READ COMMITTED` (2 → 3) y control en `SERIALIZABLE` (se mantuvo en 2); 3) espera por bloqueo con `FOR UPDATE` sobre `producto` (Sesión B quedó esperando hasta el `COMMIT` de Sesión A). Todos los resultados fueron confirmados en el motor real, no asumidos. |

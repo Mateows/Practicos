@@ -1,0 +1,68 @@
+// ============================================================================
+// TRABAJO PRÁCTICO N.º 1 - BASE DE DATOS I (UTN - FRM)
+// PROYECTO INTEGRADOR: FOOD STORE (Semana 1)
+// Integrantes: Lucas Avila, Amanda Pagano, Mateo Lautaro Liendo
+// Código fuente para dbdiagram.io (Formato DBML)
+// ============================================================================
+
+Enum forma_pago_enum {
+  EFECTIVO
+  TARJETA
+  TRANSFERENCIA
+}
+
+Enum estado_pedido_enum {
+  PENDIENTE
+  EN_PREPARACION
+  ENTREGADO
+  CANCELADO
+}
+
+Table Categoria {
+  id integer [pk, increment, note: 'Identificador único']
+  nombre varchar [not null, unique, note: 'Nombre de la categoría (Pizzas, Bebidas)']
+  descripcion text [null, note: 'Descripción del rubro']
+  activo boolean [not null, default: true, note: 'Baja lógica (R7)']
+  created_at timestamp [not null, default: `now()`]
+}
+
+Table Producto {
+  id integer [pk, increment, note: 'Identificador único']
+  id_categoria integer [not null, ref: > Categoria.id, note: 'FK obligatoria (R1)']
+  nombre varchar [not null, note: 'Nombre comercial del producto']
+  descripcion text [null]
+  precio_lista decimal(10,2) [not null, note: 'Precio de lista actual >= 0 (R5)']
+  stock integer [not null, default: 0, note: 'Stock disponible >= 0 (R5)']
+  activo boolean [not null, default: true, note: 'Baja lógica (R7)']
+  created_at timestamp [not null, default: `now()`]
+}
+
+Table Cliente {
+  id integer [pk, increment, note: 'Identificador único']
+  nombre_completo varchar [not null, note: 'Nombre y apellido del cliente']
+  email varchar [not null, unique, note: 'Email único identificador (R6)']
+  telefono varchar [null]
+  direccion varchar [null]
+  created_at timestamp [not null, default: `now()`]
+}
+
+Table Pedido {
+  id integer [pk, increment, note: 'Identificador único de orden']
+  id_cliente integer [not null, ref: > Cliente.id, note: 'FK obligatoria (R2)']
+  fecha_hora timestamp [not null, default: `now()`, note: 'Fecha y hora de emisión']
+  forma_pago forma_pago_enum [not null, note: 'EFECTIVO, TARJETA, TRANSFERENCIA']
+  estado estado_pedido_enum [not null, default: 'PENDIENTE']
+  observaciones text [null]
+}
+
+Table DetallePedido {
+  id_pedido integer [not null, ref: > Pedido.id, note: 'PK/FK hacia Pedido']
+  id_producto integer [not null, ref: > Producto.id, note: 'PK/FK hacia Producto']
+  cantidad integer [not null, note: 'Unidades vendidas > 0 (R4)']
+  precio_unitario decimal(10,2) [not null, note: 'Precio histórico congelado (R4)']
+  subtotal decimal(10,2) [note: 'Calculado: cantidad * precio_unitario']
+
+  Indexes {
+    (id_pedido, id_producto) [pk]
+  }
+}
