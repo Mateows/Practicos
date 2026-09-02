@@ -1,0 +1,11 @@
+</tarea>
+Sobre el esquema Food Store, devolvé para cada categoría vigente
+(categoria.activo = TRUE) su nombre y el monto total vendido en pedidos
+en estado ENTREGADO (suma de detalle_pedido.subtotal). Incluí solo las
+categorías con monto total mayor a 0. Ordená de mayor a menor monto total.
+</tarea>
+
+
+<restriccion>
+Sin SELECT *.
+<restriccion>
