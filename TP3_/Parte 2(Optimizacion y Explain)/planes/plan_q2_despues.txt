@@ -1,0 +1,14 @@
+                                                                      QUERY PLAN                                                                      
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=2020.65..2048.32 rows=11069 width=32) (actual time=11.224..12.113 rows=11048 loops=1)
+   Sort Key: precio_lista
+   Sort Method: quicksort  Memory: 986kB
+   ->  Bitmap Heap Scan on producto  (cost=313.42..1277.13 rows=11069 width=32) (actual time=4.038..8.410 rows=11048 loops=1)
+         Recheck Cond: ((id_categoria = 1) AND (precio_lista >= '1000'::numeric) AND (precio_lista <= '3000'::numeric))
+         Heap Blocks: exact=770
+         ->  Bitmap Index Scan on idx_producto_categoria_precio  (cost=0.00..310.65 rows=11069 width=0) (actual time=3.964..3.964 rows=11048 loops=1)
+               Index Cond: ((id_categoria = 1) AND (precio_lista >= '1000'::numeric) AND (precio_lista <= '3000'::numeric))
+ Planning Time: 3.270 ms
+ Execution Time: 12.787 ms
+(10 filas)
+

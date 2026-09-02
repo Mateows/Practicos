@@ -1,0 +1,17 @@
+                                                              QUERY PLAN                                                               
+---------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=4925.32..4931.07 rows=50 width=28) (actual time=30.022..33.633 rows=50 loops=1)
+   ->  Gather Merge  (cost=4925.32..8330.70 rows=29612 width=28) (actual time=30.019..33.626 rows=50 loops=1)
+         Workers Planned: 1
+         Workers Launched: 1
+         ->  Sort  (cost=3925.31..3999.34 rows=29612 width=28) (actual time=10.168..10.173 rows=25 loops=2)
+               Sort Key: fecha_hora DESC
+               Sort Method: top-N heapsort  Memory: 30kB
+               Worker 0:  Sort Method: quicksort  Memory: 25kB
+               ->  Parallel Seq Scan on pedido  (cost=0.00..2941.62 rows=29612 width=28) (actual time=0.006..8.276 rows=24862 loops=2)
+                     Filter: (estado = 'PENDIENTE'::estado_pedido_enum)
+                     Rows Removed by Filter: 75141
+ Planning Time: 2.777 ms
+ Execution Time: 33.698 ms
+(13 filas)
+
