@@ -2,6 +2,10 @@
 
 **Plan analizado:** `plan_q1_despues.txt` (Index Scan con Limit)
 
+**Herramienta utilizada:** OpenCode.
+
+**Prompt utilizado:** se le pidió que explicara el plan de ejecución de la Q1 nodo por nodo. En su respuesta, la herramienta alucinó y confundió el costo estimado del plan con el tiempo real de ejecución, error que se analiza en este documento.
+
 | Afirmación de la IA | ¿Correcta? (Sí/No) | Corrección / evidencia del plan real |
 | :--- | :--- | :--- |
 | "El tiempo de ejecución en este nodo fue de 6748.76 milisegundos." | No | Confunde el costo estimado máximo (`cost=...6748.76`) con el tiempo real. El costo no se mide en milisegundos, son unidades arbitrarias de I/O. El tiempo real de ese nodo fue `actual time=0.101..0.434`. |

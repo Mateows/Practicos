@@ -22,7 +22,7 @@
 5. [Parte 4 - Consultas bajo especificacion](#parte-4---consultas-bajo-especificacion)
 6. [Parte 5 - Competencia de optimizacion](#parte-5---competencia-de-optimizacion)
 7. [Inventario completo de archivos](#inventario-completo-de-archivos)
-8. [Declaracion final](#declaracion-final)
+8. [Declaracion de Uso de IA](#declaracion-de-uso-de-ia)
 
 ---
 
@@ -245,8 +245,14 @@ El equipo reviso las sugerencias, ejecuto las mediciones en la base de carga y t
 
 ---
 
-## Declaracion final
+## Declaracion de Uso de IA
 
-La inteligencia artificial se utilizo como herramienta de apoyo para adaptar scripts, proponer consultas e indices, interpretar planes y redactar alternativas. El equipo conservo el control sobre la revision, ejecucion, medicion, verificacion y aceptacion final de cada resultado.
+| Herramienta | Para que se uso | Prompt / spec (resumen) | Se acepto / se descarto — por que |
+|---|---|---|---|
+| OpenCode | Generacion y adaptacion del script de carga masiva al esquema real de FoodStore. | Se solicito un script PostgreSQL con `generate_series` para cargar al menos 50.000 productos, 20.000 clientes, 200.000 pedidos y sus detalles, respetando las restricciones del esquema y utilizando una copia de trabajo. | Se acepto la estructura general del script. Se corrigio la seleccion de claves foraneas mediante arreglos para evitar que las subconsultas se evaluaran una sola vez y se agrego `ON CONFLICT DO NOTHING` para manejar colisiones de la clave primaria compuesta. |
+| Kiro | Analisis de los planes reales de Q1, Q2 y Q3 y propuesta de indices. | Se proporcionaron los planes de `EXPLAIN ANALYZE` antes de los cambios y se solicito identificar los nodos costosos y proponer indices justificados según cada plan. | Se acepto el indice de Q1 porque la medicion mejoro el tiempo real. Las propuestas de Q2 y Q3 se documentaron aunque no mejoraron el tiempo o no fueron utilizadas por el planificador. |
+| OpenCode | Revision critica de un plan de ejecucion generado en la Parte 2. | Se solicito explicar el plan de ejecucion de Q1 nodo por nodo, sin mostrar contexto adicional. | Se acepto unicamente la afirmacion confirmada por `Execution Time: 0.908 ms`. Se corrigieron tres afirmaciones porque confundian costos estimados, filas estimadas o tiempos de nodos con datos reales del plan. |
+| Kiro y GitHub Copilot (agente de VS Code) | Generacion de las consultas de la Parte 4 a partir de especificaciones precisas y elaboracion de alternativas. | Se proporciono cada spec con tablas, filtros, columnas de salida, orden y criterio de corte. La IA genero el SQL sin recibir una solucion previa. | Se aceptaron las consultas que respetaron las especificaciones. Las alternativas se conservaron solo despues de verificar su equivalencia con conteos y `EXCEPT` en ambos sentidos. |
+| Kiro y GitHub Copilot (agente de VS Code) | Generacion de la consulta base de la competencia de la Parte 5 y propuesta de indices. | Como la catedra no proporciono una consulta comun, se solicito generar una consulta suficientemente costosa para medirla con `EXPLAIN ANALYZE`, y luego proponer reescrituras o indices a partir del plan baseline. | Se acepto la consulta base y el indice sobre `pedido(estado)` porque la medicion mostro una mejora real. Se mantuvo el indice parcial sobre `producto` como parte de la estrategia, aunque el planificador no lo utilizo directamente, y se descarto el indice sobre `detalle_pedido(id_pedido)` por evidencia previa. |
 
-Las decisiones tecnicas incluidas en este TP3 se basan en los planes y resultados registrados en los archivos originales. Este documento organiza y referencia ese material para facilitar su lectura y entrega, sin modificar el contenido de las partes ni de sus archivos fuente.
+En todos los casos, el equipo reviso las sugerencias, ejecuto las verificaciones correspondientes y tomo las decisiones finales de aceptación o descarte. La IA se utilizo como apoyo y no sustituyo la medicion ni la defensa técnica del trabajo.
