@@ -6,10 +6,10 @@
 
 ## Resultados
 
-| Consulta | JOIN antes | Cambio probado | JOIN despues | Tiempo antes | Tiempo despues | Decision |
-|---|---|---|---|---:|---:|---|
-| **A - Facturacion por categoria y mes** | `Parallel Hash Join` (`dp`-`pdo`), `Hash Join` (`dp`-`p`), `Hash Join` (`p`-`c`), con 2 workers | `CREATE INDEX idx_tp4_a_estado_id ON pedido (estado, id) INCLUDE (fecha_hora)` | Se conservaron los mismos algoritmos y los 2 workers. `pedido` paso a `Parallel Index Only Scan` con `Heap Fetches: 0` | 699.550 ms | 164.254 ms | **Aceptar. Mejora observada de aproximadamente 4,26x.** |
-| **B - Ranking de clientes por gasto** | `Parallel Hash Join` (`dp`-`pdo`) y `Hash Join` (resultado-`c`), con 2 workers | `CREATE INDEX idx_tp4_b_no_cancelado ON pedido (id) INCLUDE (id_cliente) WHERE estado <> 'CANCELADO'` | Sin cambios de JOIN ni de paralelismo. PostgreSQL mantuvo `Parallel Seq Scan` sobre `pedido` y no uso el indice | 304.753 ms | 305.604 ms | **Rechazar. No hubo mejora y el tiempo aumento levemente.** |
+| Consulta | JOIN antes | Cambio probado | JOIN despues | Tiempo antes | Tiempo despues | Mejora | Decision |
+|---|---|---|---|---:|---:|---|---|
+| **A - Facturacion por categoria y mes** | `Parallel Hash Join` (`dp`-`pdo`), `Hash Join` (`dp`-`p`), `Hash Join` (`p`-`c`), con 2 workers | `CREATE INDEX idx_tp4_a_estado_id ON pedido (estado, id) INCLUDE (fecha_hora)` | Se conservaron los mismos algoritmos y los 2 workers. `pedido` paso a `Parallel Index Only Scan` con `Heap Fetches: 0` | 699.550 ms | 164.254 ms | **~4,26x** | **Aceptar.** |
+| **B - Ranking de clientes por gasto** | `Parallel Hash Join` (`dp`-`pdo`) y `Hash Join` (resultado-`c`), con 2 workers | `CREATE INDEX idx_tp4_b_no_cancelado ON pedido (id) INCLUDE (id_cliente) WHERE estado <> 'CANCELADO'` | Sin cambios de JOIN ni de paralelismo. PostgreSQL mantuvo `Parallel Seq Scan` sobre `pedido` y no uso el indice | 304.753 ms | 305.604 ms | **Nula** | **Rechazar.** |
 
 ## Evidencia y lectura
 
