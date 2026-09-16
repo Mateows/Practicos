@@ -1,0 +1,53 @@
+                                                                                                   QUERY PLAN                                                                                                    
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=58875.64..59099.78 rows=89656 width=212) (actual time=368.940..369.639 rows=6 loops=1)
+   Sort Key: ranking.categoria, ranking.ranking_en_categoria
+   Sort Method: quicksort  Memory: 25kB
+   ->  Subquery Scan on ranking  (cost=20425.24..42305.99 rows=89656 width=212) (actual time=335.169..369.256 rows=6 loops=1)
+         ->  WindowAgg  (cost=20425.24..41409.43 rows=89656 width=220) (actual time=335.167..369.249 rows=6 loops=1)
+               Filter: ((rank() OVER (?)) <= 3)
+               Rows Removed by Filter: 48562
+               ->  WindowAgg  (cost=20323.46..39392.17 rows=89656 width=188) (actual time=271.841..338.179 rows=48568 loops=1)
+                     Run Condition: (rank() OVER (?) <= 3)
+                     ->  Incremental Sort  (cost=20323.25..37823.19 rows=89656 width=180) (actual time=271.578..327.712 rows=48568 loops=1)
+                           Sort Key: ventas_producto.id_categoria, ventas_producto.facturacion_producto DESC
+                           Presorted Key: ventas_producto.id_categoria
+                           Full-sort Groups: 2  Sort Method: quicksort  Average Memory: 29kB  Peak Memory: 29kB
+                           Pre-sorted Groups: 2  Sort Method: quicksort  Average Memory: 2425kB  Peak Memory: 2430kB
+                           ->  Subquery Scan on ventas_producto  (cost=20240.96..32749.92 rows=89656 width=180) (actual time=222.620..308.191 rows=48568 loops=1)
+                                 ->  Finalize GroupAggregate  (cost=20240.96..31853.36 rows=89656 width=188) (actual time=222.620..304.444 rows=48568 loops=1)
+                                       Group Key: cat.id, p.id
+                                       ->  Gather Merge  (cost=20240.96..29798.74 rows=74714 width=188) (actual time=222.614..266.736 rows=98143 loops=1)
+                                             Workers Planned: 2
+                                             Workers Launched: 2
+                                             ->  Partial GroupAggregate  (cost=19240.94..20174.86 rows=37357 width=188) (actual time=160.923..187.709 rows=32714 loops=3)
+                                                   Group Key: cat.id, p.id
+                                                   ->  Sort  (cost=19240.94..19334.33 rows=37357 width=159) (actual time=160.830..166.566 rows=59096 loops=3)
+                                                         Sort Key: cat.id, p.id
+                                                         Sort Method: external merge  Disk: 4512kB
+                                                         Worker 0:  Sort Method: quicksort  Memory: 2587kB
+                                                         Worker 1:  Sort Method: external merge  Disk: 4600kB
+                                                         ->  Hash Join  (cost=6264.56..13463.84 rows=37357 width=159) (actual time=35.711..129.158 rows=59096 loops=3)
+                                                               Hash Cond: (p.id_categoria = cat.id)
+                                                               ->  Hash Join  (cost=6247.89..13249.04 rows=74712 width=41) (actual time=35.365..120.073 rows=59096 loops=3)
+                                                                     Hash Cond: (dp.id_producto = p.id)
+                                                                     ->  Parallel Hash Join  (cost=4350.82..11155.84 rows=74712 width=19) (actual time=20.704..83.413 rows=59096 loops=3)
+                                                                           Hash Cond: (dp.id_pedido = ped.id)
+                                                                           ->  Parallel Seq Scan on detalle_pedido dp  (cost=0.00..6257.55 rows=208555 width=27) (actual time=0.717..36.108 rows=166524 loops=3)
+                                                                           ->  Parallel Hash  (cost=3824.00..3824.00 rows=42146 width=8) (actual time=19.805..19.806 rows=23655 loops=3)
+                                                                                 Buckets: 131072  Batches: 1  Memory Usage: 3840kB
+                                                                                 ->  Parallel Seq Scan on pedido ped  (cost=0.00..3824.00 rows=42146 width=8) (actual time=0.029..23.734 rows=35482 loops=2)
+                                                                                       Filter: ((estado <> 'CANCELADO'::estado_pedido_enum) AND (fecha_hora >= (now() - '6 mons'::interval)))
+                                                                                       Rows Removed by Filter: 64520
+                                                                     ->  Hash  (cost=1272.03..1272.03 rows=50003 width=30) (actual time=14.553..14.554 rows=50003 loops=3)
+                                                                           Buckets: 65536  Batches: 1  Memory Usage: 3638kB
+                                                                           ->  Seq Scan on producto p  (cost=0.00..1272.03 rows=50003 width=30) (actual time=0.270..7.861 rows=50003 loops=3)
+                                                                                 Filter: activo
+                                                               ->  Hash  (cost=14.10..14.10 rows=205 width=126) (actual time=0.321..0.322 rows=2 loops=3)
+                                                                     Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                                     ->  Seq Scan on categoria cat  (cost=0.00..14.10 rows=205 width=126) (actual time=0.312..0.313 rows=2 loops=3)
+                                                                           Filter: activo
+ Planning Time: 23.492 ms
+ Execution Time: 378.669 ms
+(49 rows)
+

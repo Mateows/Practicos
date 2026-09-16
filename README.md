@@ -29,6 +29,21 @@ Practicos/
 │   └── README.md
 ├── protocolo_seguridad.md                 # Protocolo de seguridad — TP2 Parte 0
 ├── AGENTS.md
+├── TP3_Optimizacion/                      # TP3: optimización de consultas con IA (EXPLAIN ANALYZE, índices)
+│   ├── DUIA_COMPLETA.md
+│   ├── TP3_Semana3_Unidad2_Practica.pdf
+│   ├── Parte 1 - Poblar la base masivamente con datos generados por IA/   # Amanda
+│   ├── Parte 2 - Consultas lentas, EXPLAIN y optimizacion medida/         # Amanda
+│   ├── Parte 3 - Lectura critica de planes interpretados por IA/         # Mateo
+│   ├── Parte 4 - Consultas resumen y subconsultas bajo especificacion precisa/  # Mateo
+│   └── Parte 5 -Competencia de optimizacion entre equipos/               # Equipo completo
+├── TP4_Reportes_Analiticos/               # TP4: reportes analíticos (joins, rankings, subconsultas)
+│   ├── DUIA_TP4.md
+│   ├── TP4_Semana4_Unidad2_Practica.pdf
+│   ├── Parte1/                            # Mateo — consultas analíticas lentas
+│   ├── Parte2/                            # Lucas — lectura crítica de planes de join
+│   ├── Parte3/                            # Amanda — rankings y subconsultas bajo spec precisa
+│   └── Parte4/                            # Amanda — competencia de optimización
 └── .kiro/steering/                        # Documentos de contexto generados con Kiro
 ```
 
@@ -61,3 +76,33 @@ Trabajo práctico de laboratorio grupal sobre el mismo esquema FoodStore. Cubre 
   2. `DELETE` con `NOT IN` — falla silenciosamente ante valores `NULL` en la subconsulta.
 
   Para cada script se documenta el efecto real, por qué no coincide con la intención declarada y la versión corregida. DUIA incluida en `DUIA_Parte3.md`.
+
+## TP3 — Optimización de consultas asistida por IA
+
+Trabajo práctico sobre la misma base FoodStore, ahora poblada masivamente (~200.000 pedidos, ~500.000 líneas de detalle), para medir y optimizar con `EXPLAIN ANALYZE`. Cinco partes repartidas entre el equipo.
+
+- **Parte 1** (Amanda) — Carga masiva de datos con un generador de la cátedra (`seed_masivo.sql`). Durante el proceso se detectó y corrigió un bug real de aleatorización no correlacionada en el script original (subconsultas tipo `ORDER BY random() LIMIT 1` que PostgreSQL resolvía una sola vez para toda la sentencia, degenerando la distribución de claves foráneas). Documentado en detalle en `DUIA_COMPLETA.md` y en la carpeta de la parte.
+
+- **Parte 2** (Amanda) — Laboratorio de `EXPLAIN ANALYZE` sobre 3 consultas lentas, con propuestas de índice de Kiro justificadas por nodo del plan. De 4 índices propuestos, solo 1 mostró mejora real (~37x) y se mantuvo aplicado; los otros 3 se revirtieron tras medir, documentando por qué no funcionaron.
+
+- **Parte 3** (Mateo) — Lectura crítica de un plan de ejecución interpretado por IA, contrastando afirmaciones contra el plan real.
+
+- **Parte 4** (Mateo) — Consultas resumen y subconsultas bajo especificación precisa, con verificación de equivalencia por `EXCEPT`.
+
+- **Parte 5** (equipo completo) — Competencia de optimización con una consulta propia (no llegó la consulta común de cátedra), documentada en `bitacora_p5.md`.
+
+DUIA consolidada de las 5 partes en `DUIA_COMPLETA.md`.
+
+## TP4 — Reportes analíticos asistidos por IA
+
+Continuación de TP3 sobre la misma base masiva (`foodstore_tp3_carga`), ahora con foco en joins múltiples, funciones de ventana y subconsultas correlacionadas.
+
+- **Parte 1** (Mateo) — Laboratorio de consultas analíticas lentas con múltiples `JOIN`, identificando el algoritmo elegido por el optimizador (`Hash Join`, `Parallel Hash Join`) antes y después de aplicar índices.
+
+- **Parte 2** (Lucas) — Lectura crítica de un plan de join real (Consulta A de la Parte 1, con `Hash Join`, `Parallel Hash Join` y un `Parallel Index Only Scan`), explicado nodo por nodo por IA y contrastado contra el plan real. Se detectó una afirmación parcialmente incorrecta (`Heap Fetches: 0` no depende solo de que el índice sea covering, también del mapa de visibilidad) y una afirmación falsa (el costo estimado no equivale a milisegundos).
+
+- **Parte 3** (Amanda) — Dos consultas bajo especificación precisa: un ranking con función de ventana (`DENSE_RANK`) y una subconsulta correlacionada, cada una con una segunda versión de estructura distinta y verificación de equivalencia con `EXCEPT`. En el camino se detectó y corrigió una no-equivalencia real entre `COUNT(*)` y `COUNT(DISTINCT ...)` al replicar manualmente la semántica de `DENSE_RANK`.
+
+- **Parte 4** (Amanda) — Competencia de optimización sobre una consulta propia (top 3 productos por facturación y categoría). El cuello de botella real resultó ser un `Sort` con *spill* a disco, resuelto subiendo `work_mem` de sesión; un índice adicional propuesto se descartó tras confirmar, con un control de orden de mediciones intercaladas, que su aparente mejora era enteramente un efecto de caché acumulado.
+
+DUIA consolidada de las 4 partes en `DUIA_TP4.md`.

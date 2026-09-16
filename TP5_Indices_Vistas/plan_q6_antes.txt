@@ -1,0 +1,27 @@
+                                                                                     QUERY PLAN                                                                                      
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Incremental Sort  (cost=348352.09..71412257.41 rows=8334 width=28) (actual time=271190.436..271198.993 rows=25013 loops=1)
+   Sort Key: cat.id, p.precio_lista DESC
+   Presorted Key: cat.id
+   Full-sort Groups: 2  Sort Method: quicksort  Average Memory: 28kB  Peak Memory: 28kB
+   Pre-sorted Groups: 2  Sort Method: quicksort  Average Memory: 971kB  Peak Memory: 974kB
+   ->  Nested Loop  (cost=0.15..71411926.40 rows=8334 width=28) (actual time=56.230..271127.824 rows=25013 loops=1)
+         Join Filter: (cat.id = p.id_categoria)
+         Rows Removed by Join Filter: 25013
+         ->  Index Scan using categoria_pkey on categoria cat  (cost=0.15..54.30 rows=205 width=8) (actual time=0.460..0.468 rows=2 loops=1)
+               Filter: activo
+         ->  Materialize  (cost=0.00..71360659.67 rows=16668 width=28) (actual time=27.883..135549.999 rows=25013 loops=2)
+               ->  Seq Scan on producto p  (cost=0.00..71360576.33 rows=16668 width=28) (actual time=55.746..271064.848 rows=25013 loops=1)
+                     Filter: (activo AND (precio_lista > (SubPlan 1)))
+                     Rows Removed by Filter: 24990
+                     SubPlan 1
+                       ->  Aggregate  (cost=1427.09..1427.10 rows=1 width=32) (actual time=5.418..5.418 rows=1 loops=50003)
+                             ->  Bitmap Heap Scan on producto p2  (cost=282.06..1364.58 rows=25002 width=6) (actual time=0.549..2.800 rows=25002 loops=50003)
+                                   Recheck Cond: ((id_categoria = p.id_categoria) AND activo)
+                                   Heap Blocks: exact=38502310
+                                   ->  Bitmap Index Scan on idx_productos_categoria_activo  (cost=0.00..275.81 rows=25002 width=0) (actual time=0.478..0.478 rows=25002 loops=50003)
+                                         Index Cond: (id_categoria = p.id_categoria)
+ Planning Time: 19.989 ms
+ Execution Time: 271205.318 ms
+(23 rows)
+

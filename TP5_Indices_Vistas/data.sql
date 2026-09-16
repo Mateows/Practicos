@@ -1,0 +1,26 @@
+-- ============================================================================
+-- data.sql — Carga de datos (heredada de TP3)
+--
+-- El volumen de datos de este proyecto NO se genera acá: ya fue cargado
+-- en TP3 mediante el script:
+--
+--   ../TP3_Optimizacion/Parte 1 - Poblar la base masivamente con datos generados por IA/seed_masivo.sql
+--
+-- contra la base foodstore_tp3_carga, con el siguiente volumen (verificado
+-- y corregido en TP3 tras detectar y arreglar un bug de aleatorizacion no
+-- correlacionada -- ver DUIA de TP3 para el detalle completo):
+--
+--   producto:        50.000 filas (+3 de datos base de TP1)
+--   cliente:         20.000 filas (+3 de datos base de TP1)
+--   pedido:         200.000 filas (+5 de datos base de TP1)
+--   detalle_pedido: ~499.500 filas (numero no determinista, ver nota en
+--                   TP3/parte1/verificacion_carga.sql)
+--
+-- Este volumen ya es "suficiente para que las diferencias de plan y de
+-- tiempo sean observables" segun pide la consigna de este TP -- no hace
+-- falta generar mas datos para las Partes A, B y C.
+--
+-- Para reproducir la carga desde cero en una base nueva:
+--   createdb -U postgres -T foodstore_dev foodstore_tp3_carga
+--   psql -U postgres -d foodstore_tp3_carga -f "../TP3_Optimizacion/Parte 1 - Poblar la base masivamente con datos generados por IA/seed_masivo.sql"
+-- ============================================================================
