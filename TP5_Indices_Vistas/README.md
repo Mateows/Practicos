@@ -10,25 +10,32 @@ líneas de detalle).
   Q6, Q4), punto 5 (costo de escritura) y punto 6 (descarte por
   sobreindexación) resueltos.
 - ⏳ **Parte B** (vistas) — pendiente.
-- ⏳ **Parte C** (vista materializada) — pendiente.
+- ✅ **Parte C** (vista materializada) — completa: justificación, script SQL, prueba ejecutada sobre `foodstore_tp3_carga` y resultados documentados en README. La vista fue creada, medida y eliminada con `DROP MATERIALIZED VIEW`; no quedó aplicada en la base.
 
 ## Estructura
 
 ```
 TP5_Indices_Vistas/
-├── schema.sql                # heredado de TP1, sin modificar
-├── data.sql                  # referencia al script de carga de TP3
-├── queries.sql               # consultas reales de TP3/TP4 usadas como carga de trabajo
-├── indices.sql               # CREATE INDEX aceptados y descartados, comentados
-├── informe_mediciones.md     # EXPLAIN ANALYZE antes/después de cada caso
-├── duia.md                   # bitácora de uso de IA
-├── plan_q5_antes.txt         # plan real, Caso 1
-├── plan_q6_antes.txt         # plan real, Caso 2
-├── plan_q4_antes.txt         # plan real, Caso 3
-└── specs/                    # especificaciones entregadas a Kiro
-    ├── spec_01_pedido_estado_detalle_join.md
-    ├── spec_02_producto_categoria_precio.md
-    └── spec_03_pedido_fecha_brin.md
+├── README.md
+├── duia.md
+├── Parte_A_Indices/
+│   ├── schema.sql                # heredado de TP1, sin modificar
+│   ├── data.sql                  # referencia al script de carga de TP3
+│   ├── queries.sql               # consultas reales de TP3/TP4 usadas como carga de trabajo
+│   ├── indices.sql               # CREATE INDEX aceptados y descartados, comentados
+│   ├── informe_mediciones.md     # EXPLAIN ANALYZE antes/después de cada caso
+│   ├── plan_q5_antes.txt         # plan real, Caso 1
+│   ├── plan_q6_antes.txt         # plan real, Caso 2
+│   ├── plan_q4_antes.txt         # plan real, Caso 3
+│   └── specs/                    # especificaciones entregadas a Kiro
+│       ├── spec_01_pedido_estado_detalle_join.md
+│       ├── spec_02_producto_categoria_precio.md
+│       └── spec_03_pedido_fecha_brin.md
+├── Parte_B_Vistas/
+│   └── README.md                 # pendiente
+├── Parte_C_Vista_Materializada/
+│   ├── README.md                 # justificación, SQL, resultados reales (618ms → 0.073ms)
+│   └── vista_materializada.sql   # script de creación, índice y refresh
 ```
 
 ## Cómo reproducir las pruebas de la Parte A
