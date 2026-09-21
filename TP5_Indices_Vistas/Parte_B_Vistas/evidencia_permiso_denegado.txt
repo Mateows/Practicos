@@ -1,0 +1,3 @@
+SET
+psql:C:/Users/hp/AppData/Local/Temp/prueba_permiso.sql:2: ERROR:  permiso denegado a la tabla usuario
+RESET

@@ -1,7 +1,7 @@
 # TP5 — Índices, Vistas y Vistas Materializadas (Unidad 3, Semana 5)
 
 Continúa el proyecto integrador **Food Store** sobre la base masiva
-`foodstore_tp3_carga` (poblada en TP3, ~200.000 pedidos, ~500.000
+`foodstore_tp3_carga` (poblada en TP3, ~200.000 pedidos, 499.571
 líneas de detalle).
 
 ## Estado actual
@@ -9,34 +9,41 @@ líneas de detalle).
 - ✅ **Parte A** (plan de indexado) — completa: 3 casos medidos (Q5,
   Q6, Q4), punto 5 (costo de escritura) y punto 6 (descarte por
   sobreindexación) resueltos.
-- ⏳ **Parte B** (vistas) — pendiente.
-- ✅ **Parte C** (vista materializada) — completa: justificación, script SQL, prueba ejecutada sobre `foodstore_tp3_carga` y resultados documentados en README. La vista fue creada, medida y eliminada con `DROP MATERIALIZED VIEW`; no quedó aplicada en la base.
+- ✅ **Parte B** (vistas y seguridad por roles) — completa: 5 vistas
+  en `vistas.sql`, rol `tp5_reportes` en `seguridad_roles.sql`,
+  verificación en `verificacion_vistas.sql`.
+- ✅ **Parte C** (vista materializada) — completa: `mv_resumen_ventas_categoria_mes`
+  aplicada en firme, mejora medida ~8468x (618ms → 0.073ms).
 
 ## Estructura
 
-```
 TP5_Indices_Vistas/
+├── schema.sql                    # heredado de TP1, sin modificar
+├── data.sql                      # referencia al script de carga de TP3
+├── queries.sql                   # consultas reales de TP3/TP4
+├── duia.md                       # bitácora de uso de IA
+├── informe_mediciones.md         # EXPLAIN ANALYZE antes/después (Parte A)
 ├── README.md
-├── duia.md
 ├── Parte_A_Indices/
-│   ├── schema.sql                # heredado de TP1, sin modificar
-│   ├── data.sql                  # referencia al script de carga de TP3
-│   ├── queries.sql               # consultas reales de TP3/TP4 usadas como carga de trabajo
-│   ├── indices.sql               # CREATE INDEX aceptados y descartados, comentados
-│   ├── informe_mediciones.md     # EXPLAIN ANALYZE antes/después de cada caso
-│   ├── plan_q5_antes.txt         # plan real, Caso 1
-│   ├── plan_q6_antes.txt         # plan real, Caso 2
-│   ├── plan_q4_antes.txt         # plan real, Caso 3
-│   └── specs/                    # especificaciones entregadas a Kiro
-│       ├── spec_01_pedido_estado_detalle_join.md
-│       ├── spec_02_producto_categoria_precio.md
-│       └── spec_03_pedido_fecha_brin.md
+│   ├── indices.sql
+│   ├── plan_q4_antes.txt
+│   ├── plan_q4_despues.txt
+│   ├── plan_q5_antes.txt
+│   ├── plan_q5_despues_workmem.txt
+│   ├── plan_q5_despues_indice_descartado.txt
+│   ├── plan_q6_antes.txt
+│   ├── plan_q6_despues.txt
+│   └── specs/
 ├── Parte_B_Vistas/
-│   └── README.md                 # pendiente
-├── Parte_C_Vista_Materializada/
-│   ├── README.md                 # justificación, SQL, resultados reales (618ms → 0.073ms)
-│   └── vista_materializada.sql   # script de creación, índice y refresh
-```
+│   ├── usuarios.sql
+│   ├── vistas.sql
+│   ├── seguridad_roles.sql
+│   ├── verificacion_vistas.sql
+│   └── specs/
+└── Parte_C_Vista_Materializada/
+    ├── vista_materializada.sql
+    ├── README.md
+    └── specs/
 
 ## Cómo reproducir las pruebas de la Parte A
 
@@ -77,7 +84,8 @@ firme (ver `indices.sql` y `duia.md` para el detalle completo de por
 qué se aceptaron y por qué los demás se descartaron):
 
 ```sql
--- Caso 2 (Q6): covering index parcial, mejora ~19% real
+-- Caso 2 (Q6): covering index parcial, mejora final ~41% real (271.2s -> 158.7s tras
+-- VACUUM ANALYZE; medicion inicial fue ~19%)
 CREATE INDEX idx_producto_categoria_precio_activo
     ON producto (id_categoria, precio_lista DESC)
     WHERE activo = TRUE;
@@ -96,7 +104,33 @@ psql -U postgres -d foodstore_tp3_carga -c "SELECT tablename, indexname FROM pg_
 ## Flujo de trabajo con IA
 
 Todo el proceso siguió el flujo obligatorio: **Kiro especifica y
-propone** (a partir de un spec en `specs/`) → **OpenCode genera y
-ejecuta** dentro de `BEGIN...ROLLBACK` → se lee y verifica el
-resultado real antes de decidir → se documenta en `duia.md` y
-`informe_mediciones.md`, se acepte o se descarte la propuesta.
+propone** (specs en `Parte_A_Indices/specs/`, `Parte_B_Vistas/specs/`
+y `Parte_C_Vista_Materializada/specs/`, uno por pieza) → **OpenCode
+genera y ejecuta** dentro de `BEGIN...ROLLBACK` cuando aplica → se lee
+y verifica el resultado real antes de decidir → se documenta en
+`duia.md` y `informe_mediciones.md`, se acepte o se descarte la
+propuesta.
+
+## Cómo reproducir/verificar Parte B
+
+```bash
+psql -U postgres -d foodstore_tp3_carga -f Parte_B_Vistas/usuarios.sql
+psql -U postgres -d foodstore_tp3_carga -f Parte_B_Vistas/vistas.sql
+psql -U postgres -d foodstore_tp3_carga -f Parte_B_Vistas/seguridad_roles.sql
+psql -U postgres -d foodstore_tp3_carga -f Parte_B_Vistas/verificacion_vistas.sql
+```
+
+El último script debe: mostrar las columnas de `v_usuario_publico`
+sin `contrasena`, devolver 0 filas en cada bloque de equivalencia
+(punto 3 de la consigna), y fallar solo en la consulta comentada
+final (`SELECT * FROM usuario` bajo `SET ROLE`).
+
+## Cómo reproducir Parte C
+
+```bash
+psql -U postgres -d foodstore_tp3_carga -f Parte_C_Vista_Materializada/vista_materializada.sql
+```
+
+Para comparar tiempos, correr `EXPLAIN ANALYZE` de la consulta base
+(ver `Parte_C_Vista_Materializada/README.md`) contra
+`SELECT * FROM mv_resumen_ventas_categoria_mes;`.

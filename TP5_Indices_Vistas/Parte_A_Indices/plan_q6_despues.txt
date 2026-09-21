@@ -1,0 +1,20 @@
+                                                                                       QUERY PLAN                                                                                        
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Nested Loop  (cost=0.29..44675358.65 rows=8334 width=28) (actual time=3.294..158722.585 rows=25013 loops=1)
+   Join Filter: (cat.id = p.id_categoria)
+   Rows Removed by Join Filter: 12571
+   ->  Index Scan using idx_producto_categoria_precio_activo on producto p  (cost=0.29..44624214.79 rows=16668 width=28) (actual time=3.274..158697.370 rows=25013 loops=1)
+         Filter: (precio_lista > (SubPlan 1))
+         Rows Removed by Filter: 24990
+         SubPlan 1
+           ->  Aggregate  (cost=892.33..892.34 rows=1 width=32) (actual time=3.170..3.170 rows=1 loops=50003)
+                 ->  Index Only Scan using idx_producto_categoria_precio_activo on producto p2  (cost=0.29..829.82 rows=25002 width=6) (actual time=0.006..1.704 rows=25002 loops=50003)
+                       Index Cond: (id_categoria = p.id_categoria)
+                       Heap Fetches: 0
+   ->  Materialize  (cost=0.00..15.12 rows=205 width=8) (actual time=0.000..0.000 rows=2 loops=25013)
+         ->  Seq Scan on categoria cat  (cost=0.00..14.10 rows=205 width=8) (actual time=0.011..0.013 rows=2 loops=1)
+               Filter: activo
+ Planning Time: 4.513 ms
+ Execution Time: 158728.129 ms
+(16 rows)
+

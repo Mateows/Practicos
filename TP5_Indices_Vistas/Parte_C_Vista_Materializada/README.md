@@ -1,14 +1,14 @@
 # Parte C — Vista materializada
 
-**Base de prueba:** `foodstore_tp3_carga` (~200.000 pedidos, ~498.000 líneas de detalle)  
+**Base de prueba:** `foodstore_tp3_carga` (~200.000 pedidos, 499.571 líneas de detalle)  
 **Motor:** PostgreSQL 17  
-**Estado:** prueba ejecutada y documentada. La vista fue creada, medida y eliminada con `DROP MATERIALIZED VIEW` al finalizar la prueba; no quedó aplicada en la base.
+**Estado:** implementada y aplicada en firme sobre `foodstore_tp3_carga`.
 
 ---
 
 ## Justificación
 
-La consulta de facturación por categoría y mes cruza 4 tablas (`pedido`, `detalle_pedido`, `producto`, `categoria`), usa agregación con `COUNT(DISTINCT)` y `SUM`, y ordena el resultado. Sobre la base masiva esta consulta demora **618 ms** porque el planificador debe leer y procesar ~498.000 filas de `detalle_pedido` completas, incluso cuando el resultado final tiene solo 26 filas.
+La consulta de facturación por categoría y mes cruza 4 tablas (`pedido`, `detalle_pedido`, `producto`, `categoria`), usa agregación con `COUNT(DISTINCT)` y `SUM`, y ordena el resultado. Sobre la base masiva esta consulta demora **618 ms** porque el planificador debe leer y procesar 499.571 filas de `detalle_pedido` completas, incluso cuando el resultado final tiene solo 26 filas.
 
 Una vista materializada resuelve exactamente este caso: paga el costo de la agregación una sola vez en el `REFRESH`, y cada consulta posterior solo lee las 26 filas ya resumidas.
 
@@ -31,7 +31,7 @@ JOIN producto pr        ON pr.id = dp.id_producto
 JOIN categoria c        ON c.id = pr.id_categoria
 WHERE p.estado <> 'CANCELADO'
 GROUP BY c.id, c.nombre, date_trunc('month', p.fecha_hora)
-WITH NO DATA;
+WITH DATA;
 ```
 
 **Índice sobre la vista:**
@@ -49,7 +49,7 @@ El índice es único porque la combinación `(id_categoria, mes)` identifica una
 
 ### Consulta base sobre tablas directas (antes)
 
-Plan: 4 Hash Join paralelos + Seq Scans sobre `detalle_pedido` (498k filas) + Sort con external merge a disco.
+Plan: 4 Hash Join paralelos + Seq Scans sobre `detalle_pedido` (499.571 filas) + Sort con external merge a disco.
 
 ```
 Execution Time: 618.156 ms
@@ -88,7 +88,7 @@ Buffers: shared hit=4
 | Consulta general sobre vista | Seq Scan (26 filas) + quicksort | **0.073 ms** | 0 |
 | Consulta filtrada por categoría | Seq Scan (26 filas) + filtro | **0.073 ms** | 0 |
 
-**Mejora:** ~**8.467x** en tiempo de lectura.
+**Mejora:** ~**8468x** en tiempo de lectura.
 
 ---
 
@@ -104,7 +104,7 @@ En producción se usa `REFRESH MATERIALIZED VIEW CONCURRENTLY` para que la vista
 
 La vista materializada es la herramienta correcta para este caso porque:
 
-- El resultado tiene muy pocas filas (26) respecto al volumen de datos de entrada (~498k).
+- El resultado tiene muy pocas filas (26) respecto al volumen de datos de entrada (499.571).
 - La consulta se ejecuta muchas veces (reportes periódicos).
 - Los datos de la base no cambian en tiempo real: el `REFRESH` puede programarse en un cron o job de ETL.
 - La penalidad de escritura es asumible: solo se paga al refrescar, no en cada INSERT/UPDATE de `pedido` o `detalle_pedido`.

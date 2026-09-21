@@ -54,8 +54,11 @@ CREATE INDEX idx_producto_categoria_precio_activo
     ON producto (id_categoria, precio_lista DESC)
     WHERE activo = TRUE;
 
--- Resultado real: 271.205 s (baseline) -> 220.899 s (con indice), ~19%
--- de mejora. El indice SI se usa (Index Only Scan, Heap Fetches: 0) y
+-- Resultado inicial (dentro de BEGIN...ROLLBACK): 271.205 s -> 220.899 s (~19%).
+-- Medicion final, sobre el indice ya aplicado en firme y tras VACUUM
+-- ANALYZE (ver Parte_A_Indices/plan_q6_despues.txt): 271.205 s -> 158.728 s
+-- (~41%). Ver informe_mediciones.md Caso 2 para el detalle completo.
+-- El indice SI se usa (Index Only Scan, Heap Fetches: 0) y
 -- resuelve el AVG de la subconsulta sin volver al heap.
 --
 -- SALVEDAD: el indice no resuelve el problema de fondo de esta

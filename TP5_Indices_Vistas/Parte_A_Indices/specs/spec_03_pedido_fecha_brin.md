@@ -25,3 +25,22 @@ sobre la misma columna (B-tree vs BRIN), midiendo el tiempo real de
 cada uno con EXPLAIN ANALYZE, en vez de asumir que B-tree es la unica
 opcion. Si ambos empeoran o no cambian nada, documentar el descarte
 igual -- no forzar un indice que no ayuda.
+
+Nota posterior (tras medir): la hipotesis de arriba sobre la
+correlacion de fecha_hora resulto ser INCORRECTA. Se verifico
+directamente con pg_stats.correlation antes de crear el BRIN:
+
+  SELECT correlation FROM pg_stats
+  WHERE tablename = 'pedido' AND attname = 'fecha_hora';
+  -> resultado real: 0.013024098 (practicamente nula)
+
+fecha_hora en realidad se genero con random() en el seed masivo (ver
+TP3), no correlacionada con el orden fisico de insercion como asumia
+esta spec original. Por eso el criterio de aceptacion original (medir
+B-tree Y BRIN con EXPLAIN ANALYZE) se ajusto: dado que la estadistica
+de PostgreSQL predice con certeza que un BRIN no puede descartar
+paginas con esa correlacion, se descarto el candidato BRIN sin
+crearlo ni medirlo -- crear un indice que la estadistica ya demuestra
+que va a fallar hubiera sido un gasto de tiempo. El candidato B-tree,
+que no admite ese mismo descarte estadistico, si se midio con
+EXPLAIN ANALYZE real (ver informe_mediciones.md, Caso 3).

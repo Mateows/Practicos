@@ -1,0 +1,38 @@
+SET
+                                                                                    QUERY PLAN                                                                                     
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=21778.34..21828.35 rows=20003 width=73) (actual time=330.052..332.272 rows=20000 loops=1)
+   Sort Key: (dense_rank() OVER (?))
+   Sort Method: quicksort  Memory: 2166kB
+   ->  WindowAgg  (cost=19999.30..20349.33 rows=20003 width=73) (actual time=318.420..328.994 rows=20000 loops=1)
+         ->  Sort  (cost=19999.28..20049.29 rows=20003 width=65) (actual time=318.404..322.286 rows=20000 loops=1)
+               Sort Key: (sum(dp.subtotal)) DESC
+               Sort Method: quicksort  Memory: 2165kB
+               ->  Finalize HashAggregate  (cost=18320.23..18570.27 rows=20003 width=65) (actual time=306.041..313.863 rows=20000 loops=1)
+                     Group Key: c.id
+                     Batches: 1  Memory Usage: 11025kB
+                     ->  Gather  (cost=13769.55..18020.19 rows=40006 width=65) (actual time=265.648..279.454 rows=55143 loops=1)
+                           Workers Planned: 2
+                           Workers Launched: 2
+                           ->  Partial HashAggregate  (cost=12769.55..13019.59 rows=20003 width=65) (actual time=229.440..237.048 rows=18381 loops=3)
+                                 Group Key: c.id
+                                 Batches: 1  Memory Usage: 8977kB
+                                 Worker 0:  Batches: 1  Memory Usage: 8977kB
+                                 Worker 1:  Batches: 1  Memory Usage: 8977kB
+                                 ->  Hash Join  (cost=4766.01..11983.69 rows=157173 width=40) (actual time=53.348..186.007 rows=125001 loops=3)
+                                       Hash Cond: (p.id_cliente = c.id)
+                                       ->  Parallel Hash Join  (cost=4049.94..10854.95 rows=157173 width=15) (actual time=42.894..142.548 rows=125001 loops=3)
+                                             Hash Cond: (dp.id_pedido = p.id)
+                                             ->  Parallel Seq Scan on detalle_pedido dp  (cost=0.00..6257.55 rows=208555 width=15) (actual time=0.116..49.112 rows=166524 loops=3)
+                                             ->  Parallel Hash  (cost=2941.62..2941.62 rows=88665 width=16) (actual time=42.264..42.265 rows=50048 loops=3)
+                                                   Buckets: 262144  Batches: 1  Memory Usage: 9152kB
+                                                   ->  Parallel Seq Scan on pedido p  (cost=0.00..2941.62 rows=88665 width=16) (actual time=0.045..26.851 rows=50048 loops=3)
+                                                         Filter: (estado <> 'CANCELADO'::estado_pedido_enum)
+                                                         Rows Removed by Filter: 16620
+                                       ->  Hash  (cost=466.03..466.03 rows=20003 width=33) (actual time=10.325..10.325 rows=20003 loops=3)
+                                             Buckets: 32768  Batches: 1  Memory Usage: 1655kB
+                                             ->  Seq Scan on cliente c  (cost=0.00..466.03 rows=20003 width=33) (actual time=0.473..6.148 rows=20003 loops=3)
+ Planning Time: 11.599 ms
+ Execution Time: 336.877 ms
+(33 rows)
+

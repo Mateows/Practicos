@@ -19,7 +19,7 @@ JOIN producto pr ON pr.id = dp.id_producto
 JOIN categoria c ON c.id = pr.id_categoria
 WHERE p.estado <> 'CANCELADO'
 GROUP BY c.id, c.nombre, date_trunc('month', p.fecha_hora)
-WITH NO DATA;
+WITH DATA;
 
 -- 2) Índice para acelerar filtros por categoría y fecha
 CREATE UNIQUE INDEX idx_mv_resumen_ventas_categoria_mes

@@ -44,8 +44,15 @@ Practicos/
 │   ├── Parte2/                            # Lucas — lectura crítica de planes de join
 │   ├── Parte3/                            # Amanda — rankings y subconsultas bajo spec precisa
 │   └── Parte4/                            # Amanda — competencia de optimización
+├── TP5_Indices_Vistas/                    # TP5: índices, vistas y vista materializada
+│   ├── schema.sql / data.sql / queries.sql   # heredados
+│   ├── duia.md / informe_mediciones.md / README.md
+│   ├── Parte_A_Indices/                   # Amanda — plan de indexado
+│   ├── Parte_B_Vistas/                    # Lucas — vistas y seguridad por roles
+│   └── Parte_C_Vista_Materializada/       # Mateo — vista materializada
 └── .kiro/steering/                        # Documentos de contexto generados con Kiro
-```
+
+```               
 
 ## TP1 — FoodStore (modelado y DDL)
 
@@ -79,7 +86,7 @@ Trabajo práctico de laboratorio grupal sobre el mismo esquema FoodStore. Cubre 
 
 ## TP3 — Optimización de consultas asistida por IA
 
-Trabajo práctico sobre la misma base FoodStore, ahora poblada masivamente (~200.000 pedidos, ~500.000 líneas de detalle), para medir y optimizar con `EXPLAIN ANALYZE`. Cinco partes repartidas entre el equipo.
+Trabajo práctico sobre la misma base FoodStore, ahora poblada masivamente (~200.000 pedidos, 499.571 líneas de detalle), para medir y optimizar con `EXPLAIN ANALYZE`. Cinco partes repartidas entre el equipo.
 
 - **Parte 1** (Amanda) — Carga masiva de datos con un generador de la cátedra (`seed_masivo.sql`). Durante el proceso se detectó y corrigió un bug real de aleatorización no correlacionada en el script original (subconsultas tipo `ORDER BY random() LIMIT 1` que PostgreSQL resolvía una sola vez para toda la sentencia, degenerando la distribución de claves foráneas). Documentado en detalle en `DUIA_COMPLETA.md` y en la carpeta de la parte.
 
@@ -106,3 +113,43 @@ Continuación de TP3 sobre la misma base masiva (`foodstore_tp3_carga`), ahora c
 - **Parte 4** (Amanda) — Competencia de optimización sobre una consulta propia (top 3 productos por facturación y categoría). El cuello de botella real resultó ser un `Sort` con *spill* a disco, resuelto subiendo `work_mem` de sesión; un índice adicional propuesto se descartó tras confirmar, con un control de orden de mediciones intercaladas, que su aparente mejora era enteramente un efecto de caché acumulado.
 
 DUIA consolidada de las 4 partes en `DUIA_TP4.md`.
+
+
+## TP5 — Índices, vistas y vista materializada
+
+Continuación de la base masiva de TP3/TP4 (`foodstore_tp3_carga`,
+~200.000 pedidos, 499.571 líneas de detalle). El trabajo se armó
+integrando el aporte de cada integrante del equipo sobre la misma
+base heredada, con specs propios en Kiro y verificación propia antes
+de aceptar cada pieza.
+
+- **Parte A** (Amanda) — plan de indexado sobre 3 consultas reales
+  con Seq Scan (ranking de clientes, productos vs. promedio de
+  categoría, top 3 por facturación mensual). De 3 candidatos, 2
+  quedaron aplicados en firme y 1 se descartó explícitamente por
+  sobreindexación (índice parcial ignorado por el planificador en
+  9/9 corridas por baja selectividad). Un tercer caso (B-tree sobre
+  `fecha_hora`) se descartó en una primera medición aislada y se
+  revirtió a aceptado tras un control de ruido con 3 rondas
+  intercaladas — el cambio de conclusión queda documentado, no
+  oculto.
+
+- **Parte B** (Lucas) — 5 vistas (`vistas.sql`): productos vigentes con categoría, ventas
+  agregadas por cliente, pedidos con los datos del cliente, detalle de pedido con nombre de producto, y
+  una vista de seguridad (`v_usuario_publico`) que expone `usuario`
+  sin la columna `contrasena`. El esquema heredado usa `cliente` sin
+  tabla de autenticación; se agregó una
+  tabla `usuario` nueva sin tocar `cliente` (`usuarios.sql`). Un rol
+  de solo lectura (`seguridad_roles.sql`) tiene `SELECT` sobre las
+  vistas pero no sobre las tablas base. Cada vista se verificó contra
+  una consulta manual equivalente con `EXCEPT`
+  (`verificacion_vistas.sql`).
+
+- **Parte C** (Mateo) — vista materializada
+  `mv_resumen_ventas_categoria_mes` (facturación,
+  pedidos y unidades por categoría y mes), con `WITH DATA` e índice
+  único para habilitar `REFRESH CONCURRENTLY` a futuro. Mejora
+  medida: 618ms → 0.073ms (~8468x) contra la consulta directa sobre
+  las tablas base. Aplicada en firme.
+
+DUIA consolidada en `TP5_Indices_Vistas/duia.md`.
