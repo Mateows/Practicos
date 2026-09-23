@@ -1,9 +1,11 @@
 -- TP5 - Parte B: rol con acceso a vistas, no a tablas base
 -- El rol es grupal (NOLOGIN). Se prueba mediante SET ROLE.
--- IMPORTANTE: este script asume que usuarios.sql y vistas.sql ya se
--- ejecutaron antes (crean la secuencia usuario_id_seq y las vistas
--- sobre las que este script otorga permisos). Si se corre antes,
--- falla con "relation does not exist".
+-- IMPORTANTE: este script asume que usuarios.sql, vistas.sql y
+-- Parte_C_Vista_Materializada/vista_materializada.sql ya se ejecutaron
+-- antes (crean la secuencia usuario_id_seq, las vistas y la vista
+-- materializada sobre las que este script otorga permisos). Si se corre
+-- antes, falla con "relation does not exist". views.sql los ejecuta en
+-- ese orden.
 
 DO $$
 BEGIN

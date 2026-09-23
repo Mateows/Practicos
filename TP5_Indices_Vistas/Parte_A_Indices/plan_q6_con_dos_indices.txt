@@ -1,0 +1,15 @@
+                                                               QUERY PLAN                                                               
+----------------------------------------------------------------------------------------------------------------------------------------
+ Nested Loop  (cost=0.29..65713008.32 rows=8334 width=28)
+   Join Filter: (cat.id = p.id_categoria)
+   ->  Index Scan using idx_producto_categoria_precio_activo on producto p  (cost=0.29..65661864.46 rows=16668 width=28)
+         Filter: (precio_lista > (SubPlan 1))
+         SubPlan 1
+           ->  Aggregate  (cost=1313.06..1313.07 rows=1 width=32)
+                 ->  Index Only Scan using idx_producto_categoria_precio_activo on producto p2  (cost=0.29..1250.55 rows=25002 width=6)
+                       Index Cond: (id_categoria = p.id_categoria)
+   ->  Materialize  (cost=0.00..15.12 rows=205 width=8)
+         ->  Seq Scan on categoria cat  (cost=0.00..14.10 rows=205 width=8)
+               Filter: activo
+(11 filas)
+

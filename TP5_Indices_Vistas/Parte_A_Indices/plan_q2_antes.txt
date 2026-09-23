@@ -1,0 +1,16 @@
+                                                     QUERY PLAN                                                      
+---------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=2421.73..2449.56 rows=11131 width=32) (actual time=46.742..48.758 rows=11048 loops=1)
+   Sort Key: precio_lista
+   Sort Method: quicksort  Memory: 986kB
+   Buffers: shared hit=796
+   ->  Seq Scan on producto  (cost=0.00..1673.60 rows=11131 width=32) (actual time=0.039..35.658 rows=11048 loops=1)
+         Filter: ((precio_lista >= '1000'::numeric) AND (precio_lista <= '3000'::numeric) AND (id_categoria = 1))
+         Rows Removed by Filter: 38955
+         Buffers: shared hit=793
+ Planning:
+   Buffers: shared hit=138
+ Planning Time: 5.515 ms
+ Execution Time: 49.938 ms
+(12 filas)
+

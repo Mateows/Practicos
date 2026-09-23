@@ -17,3 +17,23 @@ Criterio de aceptación: la consulta contra la vista materializada
 debe ser sustancialmente más rápida que la consulta directa sobre las
 tablas base (orden de magnitud), y debe documentarse la frecuencia de
 refresh recomendada según el uso esperado del reporte.
+---
+
+## Complemento (23/09, corrección posterior a la devolución)
+
+La cátedra observó que no se analizaron las consecuencias del REFRESH
+y que REFRESH CONCURRENTLY no se ejecutó. Se amplía el criterio de
+aceptación:
+
+1. Medir con salida archivada, en 3 rondas intercaladas, la consulta
+   del reporte sobre las tablas base y sobre la vista materializada.
+2. Ejecutar y medir REFRESH MATERIALIZED VIEW y REFRESH MATERIALIZED
+   VIEW CONCURRENTLY sobre la misma vista (3 rondas intercaladas).
+3. Mostrar con pg_locks qué bloqueo toma cada uno y qué significa para
+   los usuarios que están leyendo el reporte mientras se refresca.
+4. Mostrar qué ve un usuario entre dos REFRESH: un cambio en pedido no
+   aparece en la vista hasta el siguiente REFRESH.
+5. Todo reversible: los cambios de datos, dentro de BEGIN...ROLLBACK;
+   la base tiene que quedar igual que antes.
+6. Con esos resultados, justificar en informe_mediciones.md la
+   frecuencia de REFRESH y el modo (normal o CONCURRENTLY).

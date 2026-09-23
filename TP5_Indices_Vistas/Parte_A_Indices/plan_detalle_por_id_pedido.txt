@@ -1,0 +1,11 @@
+                                                             QUERY PLAN                                                             
+------------------------------------------------------------------------------------------------------------------------------------
+ Index Scan using pk_detalle_pedido on detalle_pedido  (cost=0.42..11.97 rows=3 width=20) (actual time=0.874..0.880 rows=3 loops=1)
+   Index Cond: (id_pedido = 100)
+   Buffers: shared hit=9 dirtied=2
+ Planning:
+   Buffers: shared hit=82
+ Planning Time: 7.310 ms
+ Execution Time: 2.401 ms
+(7 rows)
+

@@ -15,6 +15,7 @@
 --   pedido:         200.000 filas (+5 de datos base de TP1)
 --   detalle_pedido: 499.571 filas (valor exacto verificado con count(*);
 --                   el numero puede variar levemente entre cargas, ver nota en
+--                   TP3_Optimizacion/Parte 1 - .../verificacion_carga.sql)
 --
 -- Este volumen ya es "suficiente para que las diferencias de plan y de
 -- tiempo sean observables" segun pide la consigna de este TP -- no hace

@@ -1,0 +1,81 @@
+Timing is on.
+=== Preparacion: 500 pares (id_pedido, id_producto) validos que todavia no existen ===
+SELECT 500
+Time: 58,586 ms
+ filas_muestra 
+---------------
+           500
+(1 row)
+
+Time: 9,678 ms
+=== CALENTAMIENTO (no se cuenta) ===
+BEGIN
+Time: 0,092 ms
+INSERT 0 500
+Time: 20,995 ms
+ROLLBACK
+Time: 0,451 ms
+=== RONDA 1 - ANTES (sin los 2 indices de TP5) ===
+BEGIN
+Time: 0,075 ms
+DROP INDEX
+Time: 1,573 ms
+DROP INDEX
+Time: 0,234 ms
+INSERT 0 500
+Time: 8,067 ms
+ROLLBACK
+Time: 0,138 ms
+=== RONDA 1 - DESPUES (con los 2 indices de TP5) ===
+BEGIN
+Time: 0,078 ms
+INSERT 0 500
+Time: 9,163 ms
+ROLLBACK
+Time: 0,077 ms
+=== RONDA 2 - ANTES (sin los 2 indices de TP5) ===
+BEGIN
+Time: 0,052 ms
+DROP INDEX
+Time: 0,163 ms
+DROP INDEX
+Time: 0,140 ms
+INSERT 0 500
+Time: 7,195 ms
+ROLLBACK
+Time: 0,101 ms
+=== RONDA 2 - DESPUES (con los 2 indices de TP5) ===
+BEGIN
+Time: 0,052 ms
+INSERT 0 500
+Time: 8,876 ms
+ROLLBACK
+Time: 0,080 ms
+=== RONDA 3 - ANTES (sin los 2 indices de TP5) ===
+BEGIN
+Time: 0,221 ms
+DROP INDEX
+Time: 0,245 ms
+DROP INDEX
+Time: 0,173 ms
+INSERT 0 500
+Time: 7,805 ms
+ROLLBACK
+Time: 0,102 ms
+=== RONDA 3 - DESPUES (con los 2 indices de TP5) ===
+BEGIN
+Time: 0,054 ms
+INSERT 0 500
+Time: 8,646 ms
+ROLLBACK
+Time: 0,110 ms
+=== Verificacion: los indices de producto siguen todos presentes ===
+              indexname               
+--------------------------------------
+ idx_producto_categoria_precio
+ idx_producto_categoria_precio_activo
+ idx_productos_categoria_activo
+ producto_pkey
+(4 rows)
+
+Time: 7,380 ms

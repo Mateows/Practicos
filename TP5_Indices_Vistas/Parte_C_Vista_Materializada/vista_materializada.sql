@@ -39,6 +39,10 @@ WHERE id_categoria = 1
 ORDER BY mes DESC;
 
 -- 5) Renovación periódica de la vista materializada
--- En producción suele usarse:
--- REFRESH MATERIALIZED VIEW CONCURRENTLY mv_resumen_ventas_categoria_mes;
--- y se ejecuta en un cron o job de ETL/reportes.
+-- Se ejecuta con CONCURRENTLY para no bloquear a quien esté leyendo el
+-- reporte: toma ExclusiveLock en lugar de AccessExclusiveLock, así que
+-- los SELECT siguen funcionando (medido en medir_refresh_parte_c.sql).
+-- Requiere el índice único del paso 2 y la vista ya poblada (WITH DATA).
+-- Frecuencia recomendada: una vez por día, de noche, con un cron o job de
+-- reportes (ver informe_mediciones.md, sección Parte C).
+REFRESH MATERIALIZED VIEW CONCURRENTLY mv_resumen_ventas_categoria_mes;

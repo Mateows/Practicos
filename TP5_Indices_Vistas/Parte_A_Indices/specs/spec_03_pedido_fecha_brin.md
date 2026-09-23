@@ -8,10 +8,19 @@ de paralelismo).
 Consulta afectada: Q4 completa (top 3 productos por facturacion por
 categoria, ultimos 6 meses) -- ver queries.sql.
 
+Frecuencia (agregada en la correccion posterior a la devolucion; la
+spec original no la indicaba): reporte de ranking de productos por
+categoria sobre los ultimos 6 meses, de uso periodico (por ejemplo,
+una revision semanal o mensual del catalogo), no una consulta que se
+ejecute en cada operacion del sistema.
+
 Filtro relevante en pedido:
   WHERE estado <> 'CANCELADO' AND fecha_hora >= now() - interval '6 months'
 Selectividad real medida: retiene ~35.5% de las filas (23.655 de 66.668
-examinadas por worker) -- mas selectivo que en Q5 (75%), pero con el
+examinadas por worker; NOTA DE CORRECCION 23/09: el 23.655 sale del
+nodo Parallel Hash de plan_q4_antes.txt y el 66.668 no figura en
+ninguna salida archivada; segun los planes archivados el filtro
+retiene ~33-35%, ver informe_mediciones.md, Caso 3) -- mas selectivo que en Q5 (75%), pero con el
 mismo riesgo estructural que en TP3-Q3 (selectividad ~33%, un indice
 btree simple sobre fecha_hora empeoro el tiempo real por perdida de
 paralelismo, ver TP3_Optimizacion/.../tabla_comparativa.md).
@@ -33,6 +42,12 @@ directamente con pg_stats.correlation antes de crear el BRIN:
   SELECT correlation FROM pg_stats
   WHERE tablename = 'pedido' AND attname = 'fecha_hora';
   -> resultado real: 0.013024098 (practicamente nula)
+
+NOTA DE CORRECCION (23/09, no se borra el valor original): el
+0.013024098 no quedo archivado. Se volvio a medir con salida archivada
+(Parte_A_Indices/correlacion_fecha_hora_salida.txt): 0.0071880464. El
+valor cambia con cada ANALYZE porque sale de una muestra; en los dos
+casos es ~0 y la conclusion no cambia.
 
 fecha_hora en realidad se genero con random() en el seed masivo (ver
 TP3), no correlacionada con el orden fisico de insercion como asumia

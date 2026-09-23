@@ -4,7 +4,8 @@
 --
 -- Cada bloque documenta: la consulta que motivó la propuesta, el índice
 -- (creado o descartado), y el resultado real medido con EXPLAIN ANALYZE
--- (control de ruido: 3 corridas en orden intercalado, ver
+-- (control de ruido con 3 rondas intercaladas en Q5, Q4 y Q2; Q6 tarda
+-- minutos por corrida y se midio con una corrida por lado. Ver
 -- informe_mediciones.md para el detalle completo).
 -- ============================================================================
 
@@ -16,8 +17,11 @@
 -- Candidato A — DESCARTADO
 -- Propuesto por Kiro para atacar el filtro "estado <> 'CANCELADO'" en el
 -- join pedido-cliente. NO SE CREA EN FIRME: el planificador lo ignoro en
--- las 9 de 9 corridas de control (3 escenarios x 3 rondas intercaladas),
+-- todas las corridas con el indice (primera tanda de control, sin archivar),
 -- manteniendo Parallel Seq Scan on pedido en todos los casos.
+-- Remedido con salida archivada tras la devolucion (medir_q5_rondas.sql
+-- -> plan_q5_rondas_salida.txt): el indice no aparece en ninguno de los
+-- planes.
 --
 -- Motivo del descarte: la condicion "estado <> 'CANCELADO'" deja pasar
 -- ~75% de las filas de pedido (Rows Removed by Filter confirma esto en
@@ -32,13 +36,36 @@
 --     WHERE estado <> 'CANCELADO';
 -- (dejado comentado a proposito: NO se aplica)
 
+-- Candidato B — DESCARTADO (redundante con la PK)
+-- Kiro lo propuso como segundo candidato para el join con detalle_pedido.
+-- CREATE INDEX idx_detalle_pedido_id_pedido
+--     ON detalle_pedido (id_pedido);
+-- (dejado comentado a proposito: NO se aplica)
+--
+-- Motivo del descarte: es redundante con pk_detalle_pedido, la PK
+-- compuesta PRIMARY KEY (id_pedido, id_producto). Un B-tree compuesto
+-- sirve para buscar por su primera columna sola, asi que la PK ya cubre
+-- id_pedido. Evidencia:
+--   - plan_detalle_por_id_pedido.txt: WHERE id_pedido = 100 usa
+--     Index Scan using pk_detalle_pedido (2.401 ms), sin el candidato.
+--   - plan_q5_indice_redundante.txt (medir_indice_redundante_q5.sql,
+--     dentro de BEGIN...ROLLBACK): Q5 con el candidato 615.608 ms, sin
+--     el candidato 612.285 ms; en los dos casos el planificador lee
+--     detalle_pedido con Parallel Seq Scan y no usa el candidato.
+-- Es el ejemplo literal de sobreindexacion de la consigna: un indice
+-- redundante con otro ya existente. (spec_01 decia por error que no
+-- habia indice sobre id_pedido; quedo corregido con una nota.)
+
 -- Intervencion aceptada — SET LOCAL work_mem
 -- No es un indice, es un ajuste de memoria de sesion. El plan base
 -- mostraba el HashAggregate final derramando a disco (Batches: 5,
 -- Disk Usage > 0). Con work_mem = '16MB' para esta sesion, el
 -- HashAggregate paso a 1 solo batch, 100% en RAM, en las 3 rondas de
--- control sin excepcion. Mejora de tiempo real de ~15-29% segun la
--- ronda (ver informe_mediciones.md).
+-- control sin excepcion. En la primera tanda (9 corridas, sin salida
+-- archivada) la mejora habia sido de ~15%.
+-- Remedicion archivada (plan_q5_rondas_salida.txt): ~26% menos en las
+-- rondas 2 y 3 (la ronda 1 del baseline paga el arranque en frio), y
+-- Batches: 5 -> 1 en las 3 rondas.
 --
 -- No requiere ningun CREATE INDEX ni cambio de schema. Se aplica por
 -- sesion antes de correr el reporte de ranking:
@@ -50,11 +77,11 @@
 -- ----------------------------------------------------------------------------
 
 -- ACEPTADO, con salvedad importante documentada abajo
-CREATE INDEX idx_producto_categoria_precio_activo
+CREATE INDEX IF NOT EXISTS idx_producto_categoria_precio_activo
     ON producto (id_categoria, precio_lista DESC)
     WHERE activo = TRUE;
 
--- Resultado inicial (dentro de BEGIN...ROLLBACK): 271.205 s -> 220.899 s (~19%).
+-- Resultado inicial (dentro de BEGIN...ROLLBACK, sin salida archivada): 271.205 s -> 220.899 s (~19%).
 -- Medicion final, sobre el indice ya aplicado en firme y tras VACUUM
 -- ANALYZE (ver Parte_A_Indices/plan_q6_despues.txt): 271.205 s -> 158.728 s
 -- (~41%). Ver informe_mediciones.md Caso 2 para el detalle completo.
@@ -76,7 +103,8 @@ CREATE INDEX idx_producto_categoria_precio_activo
 --
 -- Se acepta el indice igual porque: (a) es complementario, no
 -- redundante, con idx_productos_categoria_activo (ese no incluye
--- precio_lista); (b) aporta una mejora real aunque modesta; (c) sirve
+-- precio_lista); (b) aporta una mejora real (~41%), aunque la consulta
+-- sigue en minutos porque el SubPlan corre 50.003 veces; (c) sirve
 -- ademas para acelerar cualquier otra consulta futura que ordene
 -- productos activos por precio dentro de una categoria.
 
@@ -93,7 +121,10 @@ CREATE INDEX idx_producto_categoria_precio_activo
 -- Descartado antes de crearlo, con evidencia estadistica:
 --   SELECT correlation FROM pg_stats
 --   WHERE tablename = 'pedido' AND attname = 'fecha_hora';
---   -> resultado real: 0.013024098 (practicamente nula)
+--   -> resultado al decidir: 0.013024098 (practicamente nula, sin salida
+--      archivada). Remedido el 23/09 con salida archivada
+--      (correlacion_fecha_hora_salida.txt): 0.0071880464. Cambia con cada
+--      ANALYZE porque sale de una muestra; en los dos casos es ~0.
 --
 -- Un BRIN funciona eliminando rangos de paginas cuyo [min,max] no
 -- intersecta el filtro. Con correlacion ~0, cada rango de paginas
@@ -103,34 +134,77 @@ CREATE INDEX idx_producto_categoria_precio_activo
 -- un gasto de tiempo para confirmar algo que la estadistica ya
 -- garantiza: no va a servir.
 
--- Candidato B-tree — CREADO Y APLICADO EN FIRME (tras corregir una
--- conclusion erronea de una medicion aislada)
-CREATE INDEX idx_pedido_fecha_hora_btree ON pedido (fecha_hora DESC);
+-- Candidato B-tree — DESCARTADO (tras remedir con salida archivada)
+-- CREATE INDEX idx_pedido_fecha_hora_btree ON pedido (fecha_hora DESC);
+-- (dejado comentado a proposito: NO se aplica. Se elimino de la base con
+--  DROP INDEX idx_pedido_fecha_hora_btree; ANALYZE pedido;)
 --
--- Historial de la decision (documentado completo, no se oculta el
+-- Historial de la decision (documentado completo, no se oculta ningun
 -- cambio de conclusion):
--- 1) Primera medicion (corrida unica): parecio empeorar el tiempo
---    (658 ms sin indice -> 921 ms con indice). Con esa sola corrida se
---    habia descartado el indice.
--- 2) Al re-auditar, se detecto que esa conclusion venia de UNA sola
---    corrida de cada lado, sin control de ruido -- el mismo error
---    metodologico que ya se habia evitado en el Caso 1. Se repitio la
---    prueba con 3 rondas intercaladas (Baseline-Btree-Baseline-Btree-
---    Baseline-Btree), todo dentro de BEGIN...ROLLBACK:
---      Baseline: 380.800 / 390.572 / 343.204 ms -> promedio 371.5 ms
---      B-tree:   358.550 / 327.330 / 329.518 ms -> promedio 338.5 ms
---    El indice gano en las 3 de 3 rondas (direccion consistente, a
---    diferencia del Candidato A del Caso 1) -- mejora real de ~8.9%.
--- 3) Conclusion final: ACEPTADO Y APLICADO EN FIRME. La primera
---    medicion aislada llevaba a una conclusion equivocada; el control
---    riguroso la revirtio. Se documenta el cambio completo porque es
---    la evidencia de que el proceso de medicion (no solo el resultado)
---    es lo que hay que poder defender.
+-- 1) Primera medicion (corrida unica, sin salida archivada): parecio empeorar el tiempo
+--    (658 ms sin indice -> 921 ms con indice). Se descarto.
+-- 2) Control de ruido con 3 rondas intercaladas: 371.5 ms -> 338.5 ms
+--    (~8.9%). Se acepto. Esas 3 rondas NO quedaron archivadas, y la
+--    diferencia (33 ms) era menor que la variacion observada en la
+--    misma consulta sin ningun cambio (entre 365 y 910 ms).
+-- 3) Remedicion con salida archivada (medir_q4_rondas.sql ->
+--    plan_q4_rondas_salida.txt), 3 rondas intercaladas con
+--    EXPLAIN (ANALYZE, BUFFERS):
+--      Sin indice: 767.525 / 704.008 / 628.264 ms -> promedio 699.9 ms
+--      Con indice: 729.226 / 688.866 / 706.615 ms -> promedio 708.2 ms
+--    Direccion inconsistente (mejora en las rondas 1 y 2, empeora ~12%
+--    en la 3) y promedio levemente peor con el indice.
+--    Causa probable en el plan: sin indice, pedido se lee con Parallel
+--    Seq Scan repartido en varios procesos (loops=2 o 3); con indice, en
+--    las 3 rondas el Parallel Bitmap Heap Scan sobre pedido termino en un
+--    solo proceso (loops=1), aunque el resto del plan siguio en paralelo.
+--    No es fijo: en plan_q4_despues.txt ese nodo tuvo loops=3 y aun asi
+--    tardo mas que sin indice (414.220 ms contra 378.669 ms).
+-- 4) Conclusion final: DESCARTADO. Una mejora que no supera el ruido
+--    no justifica el costo de mantener el indice en cada INSERT/UPDATE
+--    sobre pedido.
 
--- Intervencion complementaria — SET LOCAL work_mem (igual que en Caso 1 y en TP4)
---   SET LOCAL work_mem = '16MB';
--- Ya confirmado en TP4-Parte4 que resuelve el spill a disco del
--- HashAggregate de esta misma consulta. Es una intervencion distinta
--- y compatible con el indice de arriba (uno ataca el filtro de fecha,
--- el otro el spill del agregado) -- no se remidio la combinacion de
--- ambas en este TP, queda como posible mejora adicional a futuro.
+-- Intervencion complementaria — SET LOCAL work_mem (recomendada segun TP4, no remedida en TP5)
+--   SET LOCAL work_mem = '8MB';
+-- En Q4 el nodo que derrama a disco es el Sort (external merge) que
+-- alimenta al Partial GroupAggregate; no hay HashAggregate
+-- (ver plan_q4_antes.txt). En TP4-Parte4, sobre esta misma consulta,
+-- 8MB llevo el Sort a quicksort en memoria y 16MB dio peor (641 ms),
+-- por eso el valor es 8MB. No depende de ningun indice: ataca el spill
+-- del ordenamiento, no el filtro de fecha. Con el B-tree descartado,
+-- queda como la unica intervencion aplicable a Q4.
+
+
+-- ----------------------------------------------------------------------------
+-- CASO 4 — Q2: Productos de una categoria en un rango de precio
+-- Spec: specs/spec_06_producto_categoria_precio_sin_activo.md
+-- (caso agregado en la correccion posterior a la devolucion de la catedra)
+-- ----------------------------------------------------------------------------
+
+-- ACEPTADO Y APLICADO EN FIRME
+CREATE INDEX IF NOT EXISTS idx_producto_categoria_precio
+    ON producto (id_categoria, precio_lista);
+
+-- Por que no sirven los indices que ya existian sobre producto:
+-- idx_productos_categoria_activo e idx_producto_categoria_precio_activo
+-- son PARCIALES (WHERE activo = TRUE). Q2 no filtra por activo, asi que
+-- el planificador no puede usarlos: dejarian afuera productos inactivos
+-- que Q2 si tiene que devolver. Por eso este indice NO es parcial.
+--
+-- Medicion (medir_q2_rondas.sql -> plan_q2_rondas_salida.txt), 3 rondas
+-- intercaladas, con el candidato creado dentro de BEGIN...ROLLBACK:
+--   Sin indice: 30.757 / 24.997 / 26.580 ms -> promedio 27.4 ms
+--   Con indice: 17.925 / 16.431 / 17.330 ms -> promedio 17.2 ms
+-- Mejora de ~37% en las 3 rondas, y los rangos no se superponen
+-- (sin indice 25-31 ms, con indice 16-18 ms). El plan pasa de
+-- Seq Scan on producto (recorre las 50.003 filas y descarta 38.955) a
+-- Bitmap Heap Scan con Bitmap Index Scan sobre este indice (lee solo
+-- las 11.048 filas que cumplen el filtro). El Sort por precio_lista se
+-- mantiene en los dos planes, porque el Bitmap Heap Scan no devuelve
+-- las filas ordenadas.
+--
+-- Antecedente: en TP3 se probo este mismo indice para Q2 con una sola
+-- corrida por lado y no mostro mejora (12.384 ms -> 12.787 ms). Con
+-- tiempos tan chicos, una corrida por lado queda dentro del ruido; la
+-- medicion de 3 rondas intercaladas de este TP si muestra una mejora
+-- consistente.

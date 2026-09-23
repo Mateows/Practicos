@@ -1,0 +1,148 @@
+El despliegue de duración está activado.
+=== RONDA 1 - ANTES (Seq Scan) ===
+                                                     QUERY PLAN                                                      
+---------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=2421.73..2449.56 rows=11131 width=32) (actual time=28.238..29.845 rows=11048 loops=1)
+   Sort Key: precio_lista
+   Sort Method: quicksort  Memory: 986kB
+   Buffers: shared hit=796
+   ->  Seq Scan on producto  (cost=0.00..1673.60 rows=11131 width=32) (actual time=0.039..20.887 rows=11048 loops=1)
+         Filter: ((precio_lista >= '1000'::numeric) AND (precio_lista <= '3000'::numeric) AND (id_categoria = 1))
+         Rows Removed by Filter: 38955
+         Buffers: shared hit=793
+ Planning:
+   Buffers: shared hit=138
+ Planning Time: 5.781 ms
+ Execution Time: 30.757 ms
+(12 filas)
+
+Duración: 39,585 ms
+=== RONDA 1 - DESPUES (con candidato) ===
+BEGIN
+Duración: 0,294 ms
+CREATE INDEX
+Duración: 133,164 ms
+ANALYZE
+Duración: 488,140 ms
+                                                                      QUERY PLAN                                                                      
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=2040.51..2068.10 rows=11039 width=32) (actual time=15.401..17.006 rows=11048 loops=1)
+   Sort Key: precio_lista
+   Sort Method: quicksort  Memory: 986kB
+   Buffers: shared hit=773 read=44
+   ->  Bitmap Heap Scan on producto  (cost=313.04..1299.22 rows=11039 width=32) (actual time=3.240..8.697 rows=11048 loops=1)
+         Recheck Cond: ((id_categoria = 1) AND (precio_lista >= '1000'::numeric) AND (precio_lista <= '3000'::numeric))
+         Heap Blocks: exact=770
+         Buffers: shared hit=773 read=44
+         ->  Bitmap Index Scan on idx_producto_categoria_precio  (cost=0.00..310.28 rows=11039 width=0) (actual time=3.067..3.067 rows=11048 loops=1)
+               Index Cond: ((id_categoria = 1) AND (precio_lista >= '1000'::numeric) AND (precio_lista <= '3000'::numeric))
+               Buffers: shared hit=3 read=44
+ Planning:
+   Buffers: shared hit=32 read=1
+ Planning Time: 2.851 ms
+ Execution Time: 17.925 ms
+(15 filas)
+
+Duración: 21,561 ms
+ROLLBACK
+Duración: 4,513 ms
+=== RONDA 2 - ANTES (Seq Scan) ===
+                                                     QUERY PLAN                                                      
+---------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=2410.90..2438.55 rows=11060 width=32) (actual time=23.022..24.145 rows=11048 loops=1)
+   Sort Key: precio_lista
+   Sort Method: quicksort  Memory: 986kB
+   Buffers: shared hit=793
+   ->  Seq Scan on producto  (cost=0.00..1668.05 rows=11060 width=32) (actual time=0.018..16.316 rows=11048 loops=1)
+         Filter: ((precio_lista >= '1000'::numeric) AND (precio_lista <= '3000'::numeric) AND (id_categoria = 1))
+         Rows Removed by Filter: 38955
+         Buffers: shared hit=793
+ Planning:
+   Buffers: shared hit=35
+ Planning Time: 2.955 ms
+ Execution Time: 24.997 ms
+(12 filas)
+
+Duración: 28,670 ms
+=== RONDA 2 - DESPUES (con candidato) ===
+BEGIN
+Duración: 0,301 ms
+CREATE INDEX
+Duración: 101,698 ms
+ANALYZE
+Duración: 460,424 ms
+                                                                      QUERY PLAN                                                                      
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=2040.82..2068.43 rows=11042 width=32) (actual time=14.124..15.361 rows=11048 loops=1)
+   Sort Key: precio_lista
+   Sort Method: quicksort  Memory: 986kB
+   Buffers: shared hit=770 read=44
+   ->  Bitmap Heap Scan on producto  (cost=313.08..1299.31 rows=11042 width=32) (actual time=1.990..7.605 rows=11048 loops=1)
+         Recheck Cond: ((id_categoria = 1) AND (precio_lista >= '1000'::numeric) AND (precio_lista <= '3000'::numeric))
+         Heap Blocks: exact=770
+         Buffers: shared hit=770 read=44
+         ->  Bitmap Index Scan on idx_producto_categoria_precio  (cost=0.00..310.31 rows=11042 width=0) (actual time=1.774..1.774 rows=11048 loops=1)
+               Index Cond: ((id_categoria = 1) AND (precio_lista >= '1000'::numeric) AND (precio_lista <= '3000'::numeric))
+               Buffers: shared read=44
+ Planning:
+   Buffers: shared hit=19 read=1
+ Planning Time: 0.308 ms
+ Execution Time: 16.431 ms
+(15 filas)
+
+Duración: 17,476 ms
+ROLLBACK
+Duración: 3,636 ms
+=== RONDA 3 - ANTES (Seq Scan) ===
+                                                     QUERY PLAN                                                      
+---------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=2410.90..2438.55 rows=11060 width=32) (actual time=24.607..25.758 rows=11048 loops=1)
+   Sort Key: precio_lista
+   Sort Method: quicksort  Memory: 986kB
+   Buffers: shared hit=793
+   ->  Seq Scan on producto  (cost=0.00..1668.05 rows=11060 width=32) (actual time=0.019..18.066 rows=11048 loops=1)
+         Filter: ((precio_lista >= '1000'::numeric) AND (precio_lista <= '3000'::numeric) AND (id_categoria = 1))
+         Rows Removed by Filter: 38955
+         Buffers: shared hit=793
+ Planning:
+   Buffers: shared hit=21
+ Planning Time: 1.234 ms
+ Execution Time: 26.580 ms
+(12 filas)
+
+Duración: 28,440 ms
+=== RONDA 3 - DESPUES (con candidato) ===
+BEGIN
+Duración: 0,285 ms
+CREATE INDEX
+Duración: 153,712 ms
+ANALYZE
+Duración: 498,837 ms
+                                                                      QUERY PLAN                                                                      
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=2038.73..2066.28 rows=11022 width=32) (actual time=15.449..16.489 rows=11048 loops=1)
+   Sort Key: precio_lista
+   Sort Method: quicksort  Memory: 986kB
+   Buffers: shared hit=770 read=44
+   ->  Bitmap Heap Scan on producto  (cost=312.82..1298.71 rows=11022 width=32) (actual time=2.428..8.726 rows=11048 loops=1)
+         Recheck Cond: ((id_categoria = 1) AND (precio_lista >= '1000'::numeric) AND (precio_lista <= '3000'::numeric))
+         Heap Blocks: exact=770
+         Buffers: shared hit=770 read=44
+         ->  Bitmap Index Scan on idx_producto_categoria_precio  (cost=0.00..310.06 rows=11022 width=0) (actual time=2.263..2.264 rows=11048 loops=1)
+               Index Cond: ((id_categoria = 1) AND (precio_lista >= '1000'::numeric) AND (precio_lista <= '3000'::numeric))
+               Buffers: shared read=44
+ Planning:
+   Buffers: shared hit=19 read=1
+ Planning Time: 0.395 ms
+ Execution Time: 17.330 ms
+(15 filas)
+
+Duración: 18,342 ms
+ROLLBACK
+Duración: 3,893 ms
+=== Verificacion: el candidato NO debe quedar aplicado (todo dentro de ROLLBACK) ===
+ indexname 
+-----------
+(0 filas)
+
+Duración: 13,632 ms

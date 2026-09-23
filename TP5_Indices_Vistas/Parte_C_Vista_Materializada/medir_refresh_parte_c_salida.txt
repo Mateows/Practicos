@@ -1,0 +1,298 @@
+Pager usage is off.
+ filas_en_la_vista 
+-------------------
+                26
+(1 row)
+
+=== RONDA 1 - consulta sobre las tablas base ===
+                                                                                  QUERY PLAN                                                                                  
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Incremental Sort  (cost=41076.65..100013.17 rows=150060 width=182) (actual time=1046.632..1087.704 rows=26 loops=1)
+   Sort Key: (date_trunc('month'::text, p.fecha_hora)) DESC, (sum(dp.subtotal)) DESC
+   Presorted Key: (date_trunc('month'::text, p.fecha_hora))
+   Full-sort Groups: 1  Sort Method: quicksort  Average Memory: 26kB  Peak Memory: 26kB
+   Buffers: shared hit=8323, temp read=2453 written=2459
+   ->  GroupAggregate  (cost=40920.34..91617.88 rows=150060 width=182) (actual time=852.531..1087.119 rows=26 loops=1)
+         Group Key: (date_trunc('month'::text, p.fecha_hora)), c.id
+         Buffers: shared hit=8320, temp read=2453 written=2459
+         ->  Gather Merge  (cost=40920.34..84671.32 rows=375653 width=153) (actual time=851.322..1002.006 rows=375003 loops=1)
+               Workers Planned: 2
+               Workers Launched: 2
+               Buffers: shared hit=8320, temp read=2453 written=2459
+               ->  Sort  (cost=39920.32..40311.62 rows=156522 width=153) (actual time=799.969..832.873 rows=125001 loops=3)
+                     Sort Key: (date_trunc('month'::text, p.fecha_hora)) DESC, c.id, p.id
+                     Sort Method: external merge  Disk: 6496kB
+                     Buffers: shared hit=8320, temp read=2453 written=2459
+                     Worker 0:  Sort Method: external merge  Disk: 6680kB
+                     Worker 1:  Sort Method: external merge  Disk: 6448kB
+                     ->  Hash Join  (cost=6012.18..14109.59 rows=156522 width=153) (actual time=100.425..592.840 rows=125001 loops=3)
+                           Hash Cond: (pr.id_categoria = c.id)
+                           Buffers: shared hit=8230
+                           ->  Hash Join  (cost=5992.95..13283.94 rows=156522 width=35) (actual time=99.471..525.109 rows=125001 loops=3)
+                                 Hash Cond: (dp.id_producto = pr.id)
+                                 Buffers: shared hit=8129
+                                 ->  Parallel Hash Join  (cost=4069.89..10949.97 rows=156522 width=35) (actual time=68.452..398.371 rows=125001 loops=3)
+                                       Hash Cond: (dp.id_pedido = p.id)
+                                       Buffers: shared hit=5735
+                                       ->  Parallel Seq Scan on detalle_pedido dp  (cost=0.00..6329.90 rows=209590 width=27) (actual time=0.551..135.770 rows=166524 loops=3)
+                                             Buffers: shared hit=4234
+                                       ->  Parallel Hash  (cost=2971.62..2971.62 rows=87861 width=16) (actual time=67.055..67.056 rows=50048 loops=3)
+                                             Buckets: 262144  Batches: 1  Memory Usage: 9120kB
+                                             Buffers: shared hit=1501
+                                             ->  Parallel Seq Scan on pedido p  (cost=0.00..2971.62 rows=87861 width=16) (actual time=0.039..48.751 rows=50048 loops=3)
+                                                   Filter: (estado <> 'CANCELADO'::estado_pedido_enum)
+                                                   Rows Removed by Filter: 16620
+                                                   Buffers: shared hit=1501
+                                 ->  Hash  (cost=1298.03..1298.03 rows=50003 width=16) (actual time=30.812..30.813 rows=50003 loops=3)
+                                       Buckets: 65536  Batches: 1  Memory Usage: 2856kB
+                                       Buffers: shared hit=2394
+                                       ->  Seq Scan on producto pr  (cost=0.00..1298.03 rows=50003 width=16) (actual time=0.708..19.869 rows=50003 loops=3)
+                                             Buffers: shared hit=2394
+                           ->  Hash  (cost=14.10..14.10 rows=410 width=126) (actual time=0.743..0.744 rows=2 loops=3)
+                                 Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                 Buffers: shared hit=3
+                                 ->  Seq Scan on categoria c  (cost=0.00..14.10 rows=410 width=126) (actual time=0.723..0.725 rows=2 loops=3)
+                                       Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=360
+ Planning Time: 25.273 ms
+ Execution Time: 1103.941 ms
+(50 rows)
+
+=== RONDA 1 - consulta sobre la vista materializada ===
+                                                            QUERY PLAN                                                            
+----------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=1.87..1.94 rows=26 width=49) (actual time=0.036..0.038 rows=26 loops=1)
+   Sort Key: mes DESC, facturacion_total DESC
+   Sort Method: quicksort  Memory: 26kB
+   Buffers: shared hit=1
+   ->  Seq Scan on mv_resumen_ventas_categoria_mes  (cost=0.00..1.26 rows=26 width=49) (actual time=0.012..0.014 rows=26 loops=1)
+         Buffers: shared hit=1
+ Planning:
+   Buffers: shared hit=15
+ Planning Time: 0.161 ms
+ Execution Time: 0.051 ms
+(10 rows)
+
+=== RONDA 2 - consulta sobre las tablas base ===
+                                                                                 QUERY PLAN                                                                                  
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Incremental Sort  (cost=41076.65..100013.17 rows=150060 width=182) (actual time=936.380..990.820 rows=26 loops=1)
+   Sort Key: (date_trunc('month'::text, p.fecha_hora)) DESC, (sum(dp.subtotal)) DESC
+   Presorted Key: (date_trunc('month'::text, p.fecha_hora))
+   Full-sort Groups: 1  Sort Method: quicksort  Average Memory: 26kB  Peak Memory: 26kB
+   Buffers: shared hit=8320, temp read=2454 written=2460
+   ->  GroupAggregate  (cost=40920.34..91617.88 rows=150060 width=182) (actual time=697.386..990.725 rows=26 loops=1)
+         Group Key: (date_trunc('month'::text, p.fecha_hora)), c.id
+         Buffers: shared hit=8320, temp read=2454 written=2460
+         ->  Gather Merge  (cost=40920.34..84671.32 rows=375653 width=153) (actual time=697.206..886.994 rows=375003 loops=1)
+               Workers Planned: 2
+               Workers Launched: 2
+               Buffers: shared hit=8320, temp read=2454 written=2460
+               ->  Sort  (cost=39920.32..40311.62 rows=156522 width=153) (actual time=636.573..674.708 rows=125001 loops=3)
+                     Sort Key: (date_trunc('month'::text, p.fecha_hora)) DESC, c.id, p.id
+                     Sort Method: external merge  Disk: 6640kB
+                     Buffers: shared hit=8320, temp read=2454 written=2460
+                     Worker 0:  Sort Method: external merge  Disk: 6488kB
+                     Worker 1:  Sort Method: external merge  Disk: 6504kB
+                     ->  Hash Join  (cost=6012.18..14109.59 rows=156522 width=153) (actual time=51.657..380.757 rows=125001 loops=3)
+                           Hash Cond: (pr.id_categoria = c.id)
+                           Buffers: shared hit=8230
+                           ->  Hash Join  (cost=5992.95..13283.94 rows=156522 width=35) (actual time=51.049..288.711 rows=125001 loops=3)
+                                 Hash Cond: (dp.id_producto = pr.id)
+                                 Buffers: shared hit=8129
+                                 ->  Parallel Hash Join  (cost=4069.89..10949.97 rows=156522 width=35) (actual time=31.021..164.173 rows=125001 loops=3)
+                                       Hash Cond: (dp.id_pedido = p.id)
+                                       Buffers: shared hit=5735
+                                       ->  Parallel Seq Scan on detalle_pedido dp  (cost=0.00..6329.90 rows=209590 width=27) (actual time=0.047..21.798 rows=166524 loops=3)
+                                             Buffers: shared hit=4234
+                                       ->  Parallel Hash  (cost=2971.62..2971.62 rows=87861 width=16) (actual time=30.200..30.201 rows=50048 loops=3)
+                                             Buckets: 262144  Batches: 1  Memory Usage: 9152kB
+                                             Buffers: shared hit=1501
+                                             ->  Parallel Seq Scan on pedido p  (cost=0.00..2971.62 rows=87861 width=16) (actual time=0.014..12.923 rows=50048 loops=3)
+                                                   Filter: (estado <> 'CANCELADO'::estado_pedido_enum)
+                                                   Rows Removed by Filter: 16620
+                                                   Buffers: shared hit=1501
+                                 ->  Hash  (cost=1298.03..1298.03 rows=50003 width=16) (actual time=19.777..19.778 rows=50003 loops=3)
+                                       Buckets: 65536  Batches: 1  Memory Usage: 2856kB
+                                       Buffers: shared hit=2394
+                                       ->  Seq Scan on producto pr  (cost=0.00..1298.03 rows=50003 width=16) (actual time=0.600..9.278 rows=50003 loops=3)
+                                             Buffers: shared hit=2394
+                           ->  Hash  (cost=14.10..14.10 rows=410 width=126) (actual time=0.513..0.514 rows=2 loops=3)
+                                 Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                 Buffers: shared hit=3
+                                 ->  Seq Scan on categoria c  (cost=0.00..14.10 rows=410 width=126) (actual time=0.498..0.499 rows=2 loops=3)
+                                       Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=46
+ Planning Time: 0.720 ms
+ Execution Time: 1002.192 ms
+(50 rows)
+
+=== RONDA 2 - consulta sobre la vista materializada ===
+                                                            QUERY PLAN                                                            
+----------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=1.87..1.94 rows=26 width=49) (actual time=0.044..0.046 rows=26 loops=1)
+   Sort Key: mes DESC, facturacion_total DESC
+   Sort Method: quicksort  Memory: 26kB
+   Buffers: shared hit=1
+   ->  Seq Scan on mv_resumen_ventas_categoria_mes  (cost=0.00..1.26 rows=26 width=49) (actual time=0.014..0.017 rows=26 loops=1)
+         Buffers: shared hit=1
+ Planning Time: 0.081 ms
+ Execution Time: 0.060 ms
+(8 rows)
+
+=== RONDA 3 - consulta sobre las tablas base ===
+                                                                                 QUERY PLAN                                                                                  
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Incremental Sort  (cost=41076.65..100013.17 rows=150060 width=182) (actual time=757.123..811.989 rows=26 loops=1)
+   Sort Key: (date_trunc('month'::text, p.fecha_hora)) DESC, (sum(dp.subtotal)) DESC
+   Presorted Key: (date_trunc('month'::text, p.fecha_hora))
+   Full-sort Groups: 1  Sort Method: quicksort  Average Memory: 26kB  Peak Memory: 26kB
+   Buffers: shared hit=8320, temp read=2454 written=2461
+   ->  GroupAggregate  (cost=40920.34..91617.88 rows=150060 width=182) (actual time=556.578..811.927 rows=26 loops=1)
+         Group Key: (date_trunc('month'::text, p.fecha_hora)), c.id
+         Buffers: shared hit=8320, temp read=2454 written=2461
+         ->  Gather Merge  (cost=40920.34..84671.32 rows=375653 width=153) (actual time=556.364..722.375 rows=375003 loops=1)
+               Workers Planned: 2
+               Workers Launched: 2
+               Buffers: shared hit=8320, temp read=2454 written=2461
+               ->  Sort  (cost=39920.32..40311.62 rows=156522 width=153) (actual time=501.327..535.595 rows=125001 loops=3)
+                     Sort Key: (date_trunc('month'::text, p.fecha_hora)) DESC, c.id, p.id
+                     Sort Method: external merge  Disk: 6088kB
+                     Buffers: shared hit=8320, temp read=2454 written=2461
+                     Worker 0:  Sort Method: external merge  Disk: 6248kB
+                     Worker 1:  Sort Method: external merge  Disk: 7296kB
+                     ->  Hash Join  (cost=6012.18..14109.59 rows=156522 width=153) (actual time=43.960..258.474 rows=125001 loops=3)
+                           Hash Cond: (pr.id_categoria = c.id)
+                           Buffers: shared hit=8230
+                           ->  Hash Join  (cost=5992.95..13283.94 rows=156522 width=35) (actual time=43.271..195.554 rows=125001 loops=3)
+                                 Hash Cond: (dp.id_producto = pr.id)
+                                 Buffers: shared hit=8129
+                                 ->  Parallel Hash Join  (cost=4069.89..10949.97 rows=156522 width=35) (actual time=24.723..112.143 rows=125001 loops=3)
+                                       Hash Cond: (dp.id_pedido = p.id)
+                                       Buffers: shared hit=5735
+                                       ->  Parallel Seq Scan on detalle_pedido dp  (cost=0.00..6329.90 rows=209590 width=27) (actual time=0.041..18.350 rows=166524 loops=3)
+                                             Buffers: shared hit=4234
+                                       ->  Parallel Hash  (cost=2971.62..2971.62 rows=87861 width=16) (actual time=24.155..24.155 rows=50048 loops=3)
+                                             Buckets: 262144  Batches: 1  Memory Usage: 9120kB
+                                             Buffers: shared hit=1501
+                                             ->  Parallel Seq Scan on pedido p  (cost=0.00..2971.62 rows=87861 width=16) (actual time=0.018..9.907 rows=50048 loops=3)
+                                                   Filter: (estado <> 'CANCELADO'::estado_pedido_enum)
+                                                   Rows Removed by Filter: 16620
+                                                   Buffers: shared hit=1501
+                                 ->  Hash  (cost=1298.03..1298.03 rows=50003 width=16) (actual time=18.317..18.318 rows=50003 loops=3)
+                                       Buckets: 65536  Batches: 1  Memory Usage: 2856kB
+                                       Buffers: shared hit=2394
+                                       ->  Seq Scan on producto pr  (cost=0.00..1298.03 rows=50003 width=16) (actual time=0.526..8.549 rows=50003 loops=3)
+                                             Buffers: shared hit=2394
+                           ->  Hash  (cost=14.10..14.10 rows=410 width=126) (actual time=0.591..0.592 rows=2 loops=3)
+                                 Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                 Buffers: shared hit=3
+                                 ->  Seq Scan on categoria c  (cost=0.00..14.10 rows=410 width=126) (actual time=0.576..0.578 rows=2 loops=3)
+                                       Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=46
+ Planning Time: 1.037 ms
+ Execution Time: 822.318 ms
+(50 rows)
+
+=== RONDA 3 - consulta sobre la vista materializada ===
+                                                            QUERY PLAN                                                            
+----------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=1.87..1.94 rows=26 width=49) (actual time=0.038..0.040 rows=26 loops=1)
+   Sort Key: mes DESC, facturacion_total DESC
+   Sort Method: quicksort  Memory: 26kB
+   Buffers: shared hit=1
+   ->  Seq Scan on mv_resumen_ventas_categoria_mes  (cost=0.00..1.26 rows=26 width=49) (actual time=0.011..0.014 rows=26 loops=1)
+         Buffers: shared hit=1
+ Planning Time: 0.071 ms
+ Execution Time: 0.052 ms
+(8 rows)
+
+Timing is on.
+=== RONDA 1 - REFRESH MATERIALIZED VIEW ===
+REFRESH MATERIALIZED VIEW
+Time: 956,124 ms
+=== RONDA 1 - REFRESH MATERIALIZED VIEW CONCURRENTLY ===
+REFRESH MATERIALIZED VIEW
+Time: 907,325 ms
+=== RONDA 2 - REFRESH MATERIALIZED VIEW ===
+REFRESH MATERIALIZED VIEW
+Time: 920,415 ms
+=== RONDA 2 - REFRESH MATERIALIZED VIEW CONCURRENTLY ===
+REFRESH MATERIALIZED VIEW
+Time: 878,248 ms
+=== RONDA 3 - REFRESH MATERIALIZED VIEW ===
+REFRESH MATERIALIZED VIEW
+Time: 932,677 ms
+=== RONDA 3 - REFRESH MATERIALIZED VIEW CONCURRENTLY ===
+REFRESH MATERIALIZED VIEW
+Time: 881,295 ms
+Timing is off.
+=== BLOQUEO - REFRESH MATERIALIZED VIEW ===
+BEGIN
+REFRESH MATERIALIZED VIEW
+        mode         | granted 
+---------------------+---------
+ AccessExclusiveLock | t
+ ExclusiveLock       | t
+ ShareLock           | t
+(3 rows)
+
+ROLLBACK
+=== BLOQUEO - REFRESH MATERIALIZED VIEW CONCURRENTLY ===
+BEGIN
+REFRESH MATERIALIZED VIEW
+       mode       | granted 
+------------------+---------
+ AccessShareLock  | t
+ ExclusiveLock    | t
+ RowExclusiveLock | t
+(3 rows)
+
+ROLLBACK
+=== DATO DESACTUALIZADO - se cancela un pedido PENDIENTE ===
+BEGIN
+Pedido elegido: 6549 del mes '2026-09-01 00:00:00-03'
+--- Antes del cambio: vista y consulta directa coinciden ---
+ fuente  | id_categoria | cantidad_pedidos | facturacion_total 
+---------+--------------+------------------+-------------------
+ directa |            1 |              174 |        2010808.41
+ vista   |            1 |              174 |        2010808.41
+ directa |            2 |              178 |        1959552.09
+ vista   |            2 |              178 |        1959552.09
+(4 rows)
+
+UPDATE 1
+--- Despues del cambio, SIN REFRESH: la vista sigue mostrando el dato viejo ---
+ fuente  | id_categoria | cantidad_pedidos | facturacion_total 
+---------+--------------+------------------+-------------------
+ directa |            1 |              174 |        2010808.41
+ vista   |            1 |              174 |        2010808.41
+ directa |            2 |              177 |        1934407.12
+ vista   |            2 |              178 |        1959552.09
+(4 rows)
+
+REFRESH MATERIALIZED VIEW
+--- Despues del REFRESH: la vista vuelve a coincidir ---
+ fuente  | id_categoria | cantidad_pedidos | facturacion_total 
+---------+--------------+------------------+-------------------
+ directa |            1 |              174 |        2010808.41
+ vista   |            1 |              174 |        2010808.41
+ directa |            2 |              177 |        1934407.12
+ vista   |            2 |              177 |        1934407.12
+(4 rows)
+
+ROLLBACK
+=== Verificacion final: el pedido sigue PENDIENTE y la vista igual ===
+  id  |  estado   
+------+-----------
+ 6549 | PENDIENTE
+(1 row)
+
+ filas_en_la_vista 
+-------------------
+                26
+(1 row)
+

@@ -1,0 +1,108 @@
+El despliegue de duración está activado.
+=== CALENTAMIENTO (no se cuenta para la conclusion; ver nota en el informe) ===
+BEGIN
+Duración: 0,522 ms
+INSERT 0 500
+Duración: 65,963 ms
+ROLLBACK
+Duración: 0,348 ms
+=== RONDA 1 - ANTES (sin los 2 indices de TP5) ===
+BEGIN
+Duración: 0,223 ms
+DROP INDEX
+Duración: 1,232 ms
+DROP INDEX
+Duración: 0,417 ms
+COMMIT
+Duración: 7,295 ms
+BEGIN
+Duración: 0,268 ms
+INSERT 0 500
+Duración: 13,505 ms
+ROLLBACK
+Duración: 0,277 ms
+=== RONDA 1 - DESPUES (con los 2 indices de TP5) ===
+BEGIN
+Duración: 0,212 ms
+CREATE INDEX
+Duración: 109,693 ms
+CREATE INDEX
+Duración: 110,473 ms
+COMMIT
+Duración: 36,778 ms
+BEGIN
+Duración: 0,290 ms
+INSERT 0 500
+Duración: 18,407 ms
+ROLLBACK
+Duración: 0,298 ms
+=== RONDA 2 - ANTES (sin los 2 indices de TP5) ===
+BEGIN
+Duración: 0,252 ms
+DROP INDEX
+Duración: 0,622 ms
+DROP INDEX
+Duración: 0,461 ms
+COMMIT
+Duración: 8,210 ms
+BEGIN
+Duración: 0,264 ms
+INSERT 0 500
+Duración: 11,225 ms
+ROLLBACK
+Duración: 0,273 ms
+=== RONDA 2 - DESPUES (con los 2 indices de TP5) ===
+BEGIN
+Duración: 0,231 ms
+CREATE INDEX
+Duración: 109,042 ms
+CREATE INDEX
+Duración: 112,589 ms
+COMMIT
+Duración: 5,486 ms
+BEGIN
+Duración: 0,328 ms
+INSERT 0 500
+Duración: 17,462 ms
+ROLLBACK
+Duración: 0,292 ms
+=== RONDA 3 - ANTES (sin los 2 indices de TP5) ===
+BEGIN
+Duración: 0,252 ms
+DROP INDEX
+Duración: 0,599 ms
+DROP INDEX
+Duración: 0,483 ms
+COMMIT
+Duración: 7,452 ms
+BEGIN
+Duración: 0,302 ms
+INSERT 0 500
+Duración: 12,578 ms
+ROLLBACK
+Duración: 0,289 ms
+=== RONDA 3 - DESPUES (con los 2 indices de TP5) ===
+BEGIN
+Duración: 0,270 ms
+CREATE INDEX
+Duración: 105,966 ms
+CREATE INDEX
+Duración: 110,278 ms
+COMMIT
+Duración: 5,989 ms
+BEGIN
+Duración: 0,196 ms
+INSERT 0 500
+Duración: 19,168 ms
+ROLLBACK
+Duración: 0,291 ms
+=== Verificacion: los 2 indices de TP5 deben seguir aplicados en firme ===
+              indexname               
+--------------------------------------
+ idx_producto_categoria_precio
+ idx_producto_categoria_precio_activo
+ idx_productos_categoria_activo
+ producto_pkey
+(4 filas)
+
+Duración: 13,845 ms

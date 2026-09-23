@@ -28,6 +28,14 @@ Columnas candidatas:
   EXISTE ningun indice sobre esta columna -- el unico indice de
   detalle_pedido es sobre id_producto).
 
+NOTA DE CORRECCION (23/09, no se borra el error original): la
+afirmacion de arriba es falsa. La PK de detalle_pedido es compuesta,
+PRIMARY KEY (id_pedido, id_producto), y un B-tree compuesto sirve para
+buscar por su primera columna sola. Por eso pk_detalle_pedido ya cubre
+las busquedas y joins por id_pedido: un indice nuevo sobre
+detalle_pedido(id_pedido) seria redundante. Ver en indices.sql el
+Caso 1, Candidato B (descartado por sobreindexacion).
+
 Nota de contexto importante: en TP3 se probo un indice sobre
 detalle_pedido(id_pedido) para otra consulta con un join similar, y el
 planificador NO LO USO (siguio prefiriendo Hash Join + Seq Scan sobre

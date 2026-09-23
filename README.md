@@ -47,6 +47,7 @@ Practicos/
 ├── TP5_Indices_Vistas/                    # TP5: índices, vistas y vista materializada
 │   ├── schema.sql / data.sql / queries.sql   # heredados
 │   ├── duia.md / informe_mediciones.md / README.md
+│   ├── indices.sql / views.sql / specs/   # puntos de entrada (sección 7 de la consigna)
 │   ├── Parte_A_Indices/                   # Amanda — plan de indexado
 │   ├── Parte_B_Vistas/                    # Lucas — vistas y seguridad por roles
 │   └── Parte_C_Vista_Materializada/       # Mateo — vista materializada
@@ -123,16 +124,20 @@ integrando el aporte de cada integrante del equipo sobre la misma
 base heredada, con specs propios en Kiro y verificación propia antes
 de aceptar cada pieza.
 
-- **Parte A** (Amanda) — plan de indexado sobre 3 consultas reales
+- **Parte A** (Amanda) — plan de indexado sobre 4 consultas reales
   con Seq Scan (ranking de clientes, productos vs. promedio de
-  categoría, top 3 por facturación mensual). De 3 candidatos, 2
-  quedaron aplicados en firme y 1 se descartó explícitamente por
-  sobreindexación (índice parcial ignorado por el planificador en
-  9/9 corridas por baja selectividad). Un tercer caso (B-tree sobre
-  `fecha_hora`) se descartó en una primera medición aislada y se
-  revirtió a aceptado tras un control de ruido con 3 rondas
-  intercaladas — el cambio de conclusión queda documentado, no
-  oculto.
+  categoría, top 3 por facturación en los últimos 6 meses y productos de una
+  categoría en un rango de precio). Quedaron 2 índices aplicados en
+  firme: el de Q6 (~41%) y el de Q2 (~37%, Seq Scan → Bitmap Heap
+  Scan). Se descartaron el índice parcial de Q5 (ignorado por el
+  planificador, baja selectividad), un índice sobre
+  `detalle_pedido(id_pedido)` redundante con la PK, el BRIN sobre
+  `fecha_hora` (correlación ~0) y el B-tree sobre `fecha_hora` de Q4:
+  se había aceptado con ~8,9%, pero tras la devolución de la cátedra
+  se remidió con 3 rondas archivadas, no mejoró de forma consistente y
+  se descartó. El costo de escritura se midió en `producto` (+47% con
+  los dos índices) y en `detalle_pedido` (sin efecto relevante), y
+  las mediciones que sostienen cada decisión final tienen su salida archivada.
 
 - **Parte B** (Lucas) — 5 vistas (`vistas.sql`): productos vigentes con categoría, ventas
   agregadas por cliente, pedidos con los datos del cliente, detalle de pedido con nombre de producto, y
@@ -148,8 +153,9 @@ de aceptar cada pieza.
 - **Parte C** (Mateo) — vista materializada
   `mv_resumen_ventas_categoria_mes` (facturación,
   pedidos y unidades por categoría y mes), con `WITH DATA` e índice
-  único para habilitar `REFRESH CONCURRENTLY` a futuro. Mejora
-  medida: 618ms → 0.073ms (~8468x) contra la consulta directa sobre
-  las tablas base. Aplicada en firme.
+  único que permite `REFRESH CONCURRENTLY`. Medición archivada: 976.1 ms
+  la consulta directa contra 0.054 ms la vista (3 rondas). Se ejecutó
+  y se midió `REFRESH CONCURRENTLY`, con el análisis de bloqueos, del
+  dato desactualizado y de la frecuencia de refresco. Aplicada en firme.
 
 DUIA consolidada en `TP5_Indices_Vistas/duia.md`.
