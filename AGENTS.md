@@ -1,47 +1,62 @@
-# Agent Guidelines — Base de Datos II (UTN FRM)
+# Instrucciones para agentes — Base de Datos II (UTN FRM)
 
-## Repository Structure & Scope
-- **Domain:** PostgreSQL relational database coursework (`foodstore` schema).
-- **`TP1_FoodStore/`**: Base DDL (`schema.sql`), DBML, ER diagrams, and academic documentation.
-- **`TP2_Concurrencia_IA/`**: Working folder for TP2 concurrency experiments, SQL scripts, and backup dumps.
+## Repositorio
 
-## Safety & Database Protocol (`protocolo_seguridad.md`)
-> **CRITICAL RULE:** AI agents propose/write scripts, but MUST NEVER apply unverified changes or target the primary `foodstore_dev` database.
+Proyecto académico PostgreSQL: FoodStore.
 
-### 1. Target Database Isolation
-- **Base DB:** `foodstore_dev` (never execute tests directly here).
-- **Work DB:** `foodstore_copia_trabajo` (used for all experimental queries and tests).
-- **Create work copy:**
-  ```bash
-  createdb -U postgres -T foodstore_dev foodstore_copia_trabajo
-  ```
-- **Reset dirty work copy:**
-  ```bash
-  dropdb -U postgres foodstore_copia_trabajo && createdb -U postgres -T foodstore_dev foodstore_copia_trabajo
-  ```
+- [TP1](TP1_FoodStore/README.md): modelado, normalización y esquema base.
+- [TP2](TP2_Concurrencia_IA/README.md): integridad, transacciones y concurrencia.
+- [TP3](TP3_Optimizacion/DUIA_COMPLETA.md): carga masiva y optimización.
+- [TP4](TP4_Reportes_Analiticos/DUIA_TP4.md): reportes analíticos y lectura crítica.
+- [TP5](TP5_Indices_Vistas/README.md): índices, vistas y vista materializada.
+- [TP6](TP6_FNBC_Desnormalizacion/README.md): FNBC y desnormalización controlada.
 
-### 2. Mandatory Transactional Execution
-- All DML (`INSERT`, `UPDATE`, `DELETE`) and DDL MUST run inside explicit transaction blocks:
-  ```sql
-  BEGIN;
-  -- Run script/query
-  -- Verification (SELECT / \d)
-  ROLLBACK; -- Default for validation; COMMIT only upon explicit user approval
-  ```
-- **Connect string:** `psql -U postgres -d foodstore_copia_trabajo`
+Consultar el [README general](README.md), el [informe integrador](Informe_General.md) y el [protocolo de seguridad](protocolo_seguridad.md).
 
-### 3. DDL Backup Workflow
-- Prior to running DDL changes (`ALTER TABLE`, `DROP`, `CREATE INDEX`, etc.), export a backup inside `TP2_Concurrencia_IA/`:
-  ```bash
-  pg_dump -U postgres -d foodstore_copia_trabajo -f TP2_Concurrencia_IA/respaldo_foodstore_copia_trabajo.sql
-  ```
-- **Restore from backup:**
-  ```bash
-  dropdb -U postgres foodstore_copia_trabajo && createdb -U postgres foodstore_copia_trabajo && psql -U postgres -d foodstore_copia_trabajo -f TP2_Concurrencia_IA/respaldo_foodstore_copia_trabajo.sql
-  ```
+## Autorización y alcance
 
-## Key Schema & SQL Conventions
-- **PostgreSQL Version:** 14+ (Targeting PostgreSQL 17 on Windows / Git Bash).
-- **Initial Dev Schema Load:** `psql -U postgres -d foodstore_dev -f TP1_FoodStore/schema.sql`
-- **Soft Deletes:** `activo = false` used for logical deletion; foreign keys enforce `ON DELETE RESTRICT`.
-- **Generated Columns:** `detalle_pedido.subtotal` is `GENERATED ALWAYS AS (cantidad * precio_unitario) STORED`.
+El agente puede leer archivos, analizar y presentar propuestas sin modificarlos.
+
+Cada modificación requiere autorización explícita del grupo y debe limitarse a los archivos, operaciones y alcance aprobados. La autorización para una tarea no habilita cambios adicionales ni correcciones de entregas anteriores.
+
+No ejecutar SQL, conectarse a PostgreSQL, crear, restaurar, borrar o recrear bases, realizar git add, commit o push sin autorización específica para esas operaciones. Aprobar el contenido de un script o su guardado no autoriza ejecutarlo.
+
+No ejecutar pruebas sobre foodstore_dev. No borrar ni recrear automáticamente una copia de trabajo ante un error.
+
+Antes de una operación autorizada, revisar su origen, destino, requisitos y respaldo. Ante conflictos de nombres u objetos, detenerse e informar; no sobrescribir ni reutilizar silenciosamente.
+
+## Seguridad y estado de las bases
+
+Seguir el [protocolo de seguridad](protocolo_seguridad.md).
+
+- Las validaciones de DDL/DML transaccional utilizan BEGIN y terminan con ROLLBACK.
+- COMMIT requiere autorización explícita: un resultado correcto no constituye autorización.
+- Respaldar antes de DDL; conservar los respaldos nuevos fechados fuera del repositorio.
+- CREATE DATABASE y DROP DATABASE no se ejecutan dentro de una transacción y requieren autorización específica.
+- Revisar los scripts históricos antes de ejecutarlos: algunos contienen COMMIT.
+
+Los scripts y las decisiones históricas no son un inventario de objetos instalados actualmente. No asumir que las distintas bases o copias tienen el mismo esquema, datos, índices o triggers.
+
+Los scripts actuales de TP6 comprueban foodstore_copia_trabajo como destino. No ejecutarlos sobre otra base ni cambiar esa comprobación sin autorización. Sus implementaciones se validaron con ROLLBACK y no quedaron persistidas.
+
+## Convenciones del esquema documentado
+
+Fuentes: [schema.sql de TP1](TP1_FoodStore/schema.sql) y [usuario de TP5](TP5_Indices_Vistas/Parte_B_Vistas/usuarios.sql).
+
+- producto y categoria usan activo para baja lógica.
+- usuario usa eliminado.
+- En schema.sql de TP1, pedido y detalle_pedido no tienen activo ni eliminado; ese esquema se conserva. TP6 Parte 2 incorpora eliminado BOOLEAN NOT NULL DEFAULT FALSE en ambas tablas únicamente dentro de sus ensayos transaccionales, como estados propios independientes. La consulta normalizada filtra dp.eliminado = FALSE AND ped.eliminado = FALSE; la desnormalizada filtra dp.eliminado = FALSE AND dp.pedido_eliminado_cache = FALSE. El cache copia exclusivamente el estado del pedido y no modifica el eliminado propio del detalle. Los ensayos terminan con ROLLBACK; estas adiciones no describen un esquema instalado permanentemente. No equiparar CANCELADO con eliminado.
+- La FK detalle_pedido.id_pedido → pedido.id usa ON DELETE CASCADE.
+- Las FK producto → categoria, pedido → cliente y detalle_pedido → producto usan ON DELETE RESTRICT.
+- detalle_pedido.subtotal es GENERATED ALWAYS AS (cantidad * precio_unitario) STORED.
+- Usar los nombres reales id_pedido, id_producto, id_categoria y fecha_hora.
+
+Estas convenciones describen los archivos revisados; no reemplazan una comprobación autorizada del esquema instalado.
+
+## Evidencias y comunicación
+
+Conservar las evidencias históricas intactas. Distinguir resultados medidos, decisiones, pruebas pendientes y cambios persistidos.
+
+En TP6, la concurrencia entre sesiones no fue probada y el costo adicional de escritura no fue cuantificado. No presentar las pruebas secuenciales como concurrentes ni extrapolar tiempos a otras cargas.
+
+Antes de ampliar el alcance, presentar la propuesta al grupo y esperar autorización.

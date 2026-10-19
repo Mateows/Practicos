@@ -1,0 +1,28 @@
+                                                                                             QUERY PLAN                                                                                              
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=17399.84..17399.89 rows=20 width=65) (actual time=192.590..192.596 rows=20 loops=1)
+   ->  Sort  (cost=17399.84..17449.85 rows=20003 width=65) (actual time=192.562..192.567 rows=20 loops=1)
+         Sort Key: (sum(dp.subtotal)) DESC
+         Sort Method: top-N heapsort  Memory: 27kB
+         ->  HashAggregate  (cost=16617.53..16867.57 rows=20003 width=65) (actual time=183.052..190.112 rows=19346 loops=1)
+               Group Key: c.id
+               Batches: 5  Memory Usage: 8241kB  Disk Usage: 656kB
+               ->  Hash Join  (cost=4899.23..15799.76 rows=163555 width=40) (actual time=27.855..145.016 rows=165490 loops=1)
+                     Hash Cond: (p.id_cliente = c.id)
+                     ->  Hash Join  (cost=4183.16..14654.27 rows=163555 width=15) (actual time=23.123..111.237 rows=165490 loops=1)
+                           Hash Cond: (dp.id_pedido = p.id)
+                           ->  Seq Scan on detalle_pedido dp  (cost=0.00..9159.71 rows=499571 width=15) (actual time=0.021..25.081 rows=499571 loops=1)
+                           ->  Hash  (cost=3364.66..3364.66 rows=65480 width=16) (actual time=22.968..22.970 rows=66275 loops=1)
+                                 Buckets: 131072 (originally 65536)  Batches: 1 (originally 1)  Memory Usage: 4131kB
+                                 ->  Bitmap Heap Scan on pedido p  (cost=911.47..3364.66 rows=65480 width=16) (actual time=5.585..15.943 rows=66275 loops=1)
+                                       Recheck Cond: ((fecha_hora >= '2025-06-01 00:00:00-03'::timestamp with time zone) AND (fecha_hora <= '2025-12-31 00:00:00-03'::timestamp with time zone))
+                                       Heap Blocks: exact=1471
+                                       ->  Bitmap Index Scan on idx_pedido_fecha_hora  (cost=0.00..895.10 rows=65480 width=0) (actual time=5.413..5.413 rows=66275 loops=1)
+                                             Index Cond: ((fecha_hora >= '2025-06-01 00:00:00-03'::timestamp with time zone) AND (fecha_hora <= '2025-12-31 00:00:00-03'::timestamp with time zone))
+                     ->  Hash  (cost=466.03..466.03 rows=20003 width=33) (actual time=4.618..4.618 rows=20003 loops=1)
+                           Buckets: 32768  Batches: 1  Memory Usage: 1544kB
+                           ->  Seq Scan on cliente c  (cost=0.00..466.03 rows=20003 width=33) (actual time=0.019..2.321 rows=20003 loops=1)
+ Planning Time: 17.969 ms
+ Execution Time: 203.051 ms
+(24 filas)
+

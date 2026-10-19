@@ -1,0 +1,24 @@
+2026-10-14 11:52:56.565 -03 [4684] [desconocido]@[desconocido] ::1(62150) [desconocido] LOG:  conexión recibida: host=::1 port=62150
+2026-10-14 11:52:56.586 -03 [4684] postgres@foodstore_dev ::1(62150) [desconocido] FATAL:  la autentificación password falló para el usuario «postgres»
+2026-10-14 11:52:56.586 -03 [4684] postgres@foodstore_dev ::1(62150) [desconocido] DETALLE:  La conexión coincidió con el archivo «C:/Program Files/PostgreSQL/17/data/pg_hba.conf» línea 117: «host    all             all             ::1/128                 scram-sha-256»
+2026-10-14 11:52:56.748 -03 [26120] [desconocido]@[desconocido] ::1(62151) [desconocido] LOG:  conexión recibida: host=::1 port=62151
+2026-10-14 11:52:56.767 -03 [26120] postgres@foodstore_dev ::1(62151) [desconocido] LOG:  conexión autenticada: identidad=«postgres» método=scram-sha-256 (C:/Program Files/PostgreSQL/17/data/pg_hba.conf:117)
+2026-10-14 11:52:56.767 -03 [26120] postgres@foodstore_dev ::1(62151) [desconocido] LOG:  conexión autorizada: usuario=postgres base_de_datos=foodstore_dev nombre_de_aplicación=psql
+2026-10-14 11:52:56.772 -03 [26120] postgres@foodstore_dev ::1(62151) psql LOG:  sentencia: SELECT 'AUDITORIA_TEST_INICIO_B2' AS marca, clock_timestamp() AS ts;
+2026-10-14 11:52:56.772 -03 [26120] postgres@foodstore_dev ::1(62151) psql LOG:  sentencia: SELECT id, nombre, mail
+	FROM usuario
+	WHERE eliminado = FALSE
+	ORDER BY id
+	LIMIT 3;
+2026-10-14 11:52:56.777 -03 [26120] postgres@foodstore_dev ::1(62151) psql LOG:  sentencia: BEGIN;
+2026-10-14 11:52:56.777 -03 [26120] postgres@foodstore_dev ::1(62151) psql LOG:  sentencia: INSERT INTO categoria (nombre, descripcion)
+	VALUES ('AuditoriaTestB2', 'Categoria de prueba B.2, revertida con ROLLBACK')
+	RETURNING id;
+2026-10-14 11:52:56.781 -03 [26120] postgres@foodstore_dev ::1(62151) psql LOG:  sentencia: UPDATE categoria
+	SET descripcion = 'Categoria de prueba B.2, actualizada y luego revertida'
+	WHERE nombre = 'AuditoriaTestB2'
+	RETURNING id;
+2026-10-14 11:52:56.783 -03 [26120] postgres@foodstore_dev ::1(62151) psql LOG:  sentencia: ROLLBACK;
+2026-10-14 11:52:56.783 -03 [26120] postgres@foodstore_dev ::1(62151) psql LOG:  sentencia: SELECT fn_autenticar('admin@foodstore.com', 'clave_erronea_test') AS login_fallido;
+2026-10-14 11:52:56.823 -03 [26120] postgres@foodstore_dev ::1(62151) psql LOG:  sentencia: SELECT 'AUDITORIA_TEST_FIN_B2' AS marca, clock_timestamp() AS ts;
+2026-10-14 11:52:56.823 -03 [26120] postgres@foodstore_dev ::1(62151) psql LOG:  desconexiÃ³n: duraciÃ³n de sesiÃ³n: 0:00:00.094 usuario=postgres base=foodstore_dev host=::1 port=62151

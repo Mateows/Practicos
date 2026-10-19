@@ -1,0 +1,249 @@
+BEGIN
+SET
+DO
+LOCK TABLE
+DO
+ALTER TABLE
+ALTER TABLE
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE FUNCTION
+CREATE TRIGGER
+UPDATE 499571
+ALTER TABLE
+CREATE INDEX
+CREATE VIEW
+ id_pedido | id_producto | fecha_hora_pedido_cache | fecha_hora_original | id_categoria_cache | id_categoria_original | pedido_eliminado_cache | pedido_eliminado_original | detalle_eliminado 
+-----------+-------------+-------------------------+---------------------+--------------------+-----------------------+------------------------+---------------------------+-------------------
+(0 rows)
+
+DO
+CREATE VIEW
+CREATE VIEW
+CREATE VIEW
+CREATE VIEW
+CREATE VIEW
+CREATE VIEW
+CREATE FUNCTION
+ fn_tp6_assert_equivalencia 
+----------------------------
+ 
+(1 row)
+
+SAVEPOINT
+psql:TP6_FNBC_Desnormalizacion/Parte2_Desnormalizacion/tp_desnormalizacion_top_categorias.sql:1037: NOTICE:  Pruebas de sincronización secuenciales superadas; no son pruebas concurrentes.
+DO
+ROLLBACK
+RELEASE
+ id_pedido | id_producto | fecha_hora_pedido_cache | fecha_hora_original | id_categoria_cache | id_categoria_original | pedido_eliminado_cache | pedido_eliminado_original | detalle_eliminado 
+-----------+-------------+-------------------------+---------------------+--------------------+-----------------------+------------------------+---------------------------+-------------------
+(0 rows)
+
+ sentido | categoria | total_vendido 
+---------+-----------+---------------
+(0 rows)
+
+ sentido | id_pedido | id_producto | categoria | subtotal 
+---------+-----------+-------------+-----------+----------
+(0 rows)
+
+ fn_tp6_assert_equivalencia 
+----------------------------
+ 
+(1 row)
+
+psql:TP6_FNBC_Desnormalizacion/Parte2_Desnormalizacion/tp_desnormalizacion_top_categorias.sql:1075: NOTICE:  Auditoría completa y EXCEPT bidireccional: resultados vacíos.
+DO
+ANALYZE
+ANALYZE
+ANALYZE
+ANALYZE
+ categoria | total_vendido 
+-----------+---------------
+ Bebidas   |    5589534.40
+ Pizzas    |    5215387.22
+(2 rows)
+
+ categoria | total_vendido 
+-----------+---------------
+ Bebidas   |    5589534.40
+ Pizzas    |    5215387.22
+(2 rows)
+
+Ronda 1 — consulta normalizada
+                                                                                                           QUERY PLAN                                                                                                           
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=8633.04..8633.05 rows=2 width=39) (actual time=43.907..49.238 rows=2 loops=1)
+   Buffers: shared hit=10942
+   ->  Sort  (cost=8633.04..8633.05 rows=2 width=39) (actual time=43.906..49.233 rows=2 loops=1)
+         Sort Key: (sum(dp.subtotal)) DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=10942
+         ->  Finalize GroupAggregate  (cost=8627.36..8633.03 rows=2 width=39) (actual time=43.897..49.225 rows=2 loops=1)
+               Group Key: c.nombre
+               Buffers: shared hit=10942
+               ->  Gather Merge  (cost=8627.36..8632.99 rows=2 width=39) (actual time=43.745..49.214 rows=2 loops=1)
+                     Workers Planned: 1
+                     Workers Launched: 1
+                     Buffers: shared hit=10942
+                     ->  Partial GroupAggregate  (cost=7627.35..7632.76 rows=2 width=39) (actual time=18.781..18.854 rows=1 loops=2)
+                           Group Key: c.nombre
+                           Buffers: shared hit=10942
+                           ->  Sort  (cost=7627.35..7629.15 rows=717 width=14) (actual time=18.694..18.731 rows=770 loops=2)
+                                 Sort Key: c.nombre
+                                 Sort Method: quicksort  Memory: 98kB
+                                 Buffers: shared hit=10942
+                                 Worker 0:  Sort Method: quicksort  Memory: 25kB
+                                 ->  Hash Join  (cost=1.76..7593.35 rows=717 width=14) (actual time=0.040..18.360 rows=770 loops=2)
+                                       Hash Cond: (pr.id_categoria = c.id)
+                                       Buffers: shared hit=10934
+                                       ->  Nested Loop  (cost=0.71..7586.44 rows=717 width=15) (actual time=0.030..18.060 rows=770 loops=2)
+                                             Buffers: shared hit=10933
+                                             ->  Nested Loop  (cost=0.42..7360.61 rows=717 width=15) (actual time=0.021..14.793 rows=770 loops=2)
+                                                   Buffers: shared hit=6316
+                                                   ->  Parallel Seq Scan on pedido ped  (cost=0.00..3236.75 rows=287 width=8) (actual time=0.008..11.553 rows=294 loops=2)
+                                                         Filter: ((NOT eliminado) AND (fecha_hora >= '2026-06-25 00:00:00-03'::timestamp with time zone) AND (fecha_hora < '2026-06-26 00:00:00-03'::timestamp with time zone))
+                                                         Rows Removed by Filter: 99708
+                                                         Buffers: shared hit=1472
+                                                   ->  Index Scan using pk_detalle_pedido on detalle_pedido dp  (cost=0.42..14.34 rows=3 width=23) (actual time=0.008..0.010 rows=3 loops=588)
+                                                         Index Cond: (id_pedido = ped.id)
+                                                         Filter: (NOT eliminado)
+                                                         Buffers: shared hit=4844
+                                             ->  Index Scan using producto_pkey on producto pr  (cost=0.29..0.31 rows=1 width=16) (actual time=0.004..0.004 rows=1 loops=1539)
+                                                   Index Cond: (id = dp.id_producto)
+                                                   Buffers: shared hit=4617
+                                       ->  Hash  (cost=1.02..1.02 rows=2 width=15) (actual time=0.015..0.016 rows=2 loops=1)
+                                             Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                             Buffers: shared hit=1
+                                             ->  Seq Scan on categoria c  (cost=0.00..1.02 rows=2 width=15) (actual time=0.011..0.012 rows=2 loops=1)
+                                                   Buffers: shared hit=1
+ Planning:
+   Buffers: shared hit=43
+ Planning Time: 0.654 ms
+ Execution Time: 49.291 ms
+(48 rows)
+
+Ronda 1 — consulta desnormalizada
+                                                                                                       QUERY PLAN                                                                                                       
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=3494.17..3494.18 rows=2 width=39) (actual time=1.947..1.948 rows=2 loops=1)
+   Buffers: shared hit=565
+   ->  Sort  (cost=3494.17..3494.18 rows=2 width=39) (actual time=1.946..1.947 rows=2 loops=1)
+         Sort Key: (sum(dp.subtotal)) DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=565
+         ->  GroupAggregate  (cost=25.13..3494.16 rows=2 width=39) (actual time=1.650..1.941 rows=2 loops=1)
+               Group Key: c.nombre
+               Buffers: shared hit=565
+               ->  Nested Loop  (cost=25.13..3488.00 rows=1227 width=14) (actual time=0.156..1.748 rows=1539 loops=1)
+                     Join Filter: (c.id = dp.id_categoria_cache)
+                     Rows Removed by Join Filter: 1539
+                     Buffers: shared hit=565
+                     ->  Index Scan using categoria_nombre_key on categoria c  (cost=0.13..12.16 rows=2 width=15) (actual time=0.004..0.005 rows=2 loops=1)
+                           Buffers: shared hit=2
+                     ->  Materialize  (cost=25.00..3442.10 rows=1227 width=15) (actual time=0.076..0.726 rows=1539 loops=2)
+                           Buffers: shared hit=563
+                           ->  Bitmap Heap Scan on detalle_pedido dp  (cost=25.00..3435.97 rows=1227 width=15) (actual time=0.149..1.169 rows=1539 loops=1)
+                                 Recheck Cond: ((fecha_hora_pedido_cache >= '2026-06-25 00:00:00-03'::timestamp with time zone) AND (fecha_hora_pedido_cache < '2026-06-26 00:00:00-03'::timestamp with time zone))
+                                 Filter: ((NOT eliminado) AND (NOT pedido_eliminado_cache))
+                                 Heap Blocks: exact=559
+                                 Buffers: shared hit=563
+                                 ->  Bitmap Index Scan on idx_tp6_detalle_fecha_cache  (cost=0.00..24.69 rows=1227 width=0) (actual time=0.087..0.088 rows=1547 loops=1)
+                                       Index Cond: ((fecha_hora_pedido_cache >= '2026-06-25 00:00:00-03'::timestamp with time zone) AND (fecha_hora_pedido_cache < '2026-06-26 00:00:00-03'::timestamp with time zone))
+                                       Buffers: shared hit=4
+ Planning:
+   Buffers: shared hit=8
+ Planning Time: 0.281 ms
+ Execution Time: 1.980 ms
+(29 rows)
+
+Ronda 2 — consulta desnormalizada
+                                                                                                       QUERY PLAN                                                                                                       
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=3494.17..3494.18 rows=2 width=39) (actual time=1.293..1.294 rows=2 loops=1)
+   Buffers: shared hit=565
+   ->  Sort  (cost=3494.17..3494.18 rows=2 width=39) (actual time=1.292..1.293 rows=2 loops=1)
+         Sort Key: (sum(dp.subtotal)) DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=565
+         ->  GroupAggregate  (cost=25.13..3494.16 rows=2 width=39) (actual time=1.011..1.290 rows=2 loops=1)
+               Group Key: c.nombre
+               Buffers: shared hit=565
+               ->  Nested Loop  (cost=25.13..3488.00 rows=1227 width=14) (actual time=0.125..1.093 rows=1539 loops=1)
+                     Join Filter: (c.id = dp.id_categoria_cache)
+                     Rows Removed by Join Filter: 1539
+                     Buffers: shared hit=565
+                     ->  Index Scan using categoria_nombre_key on categoria c  (cost=0.13..12.16 rows=2 width=15) (actual time=0.002..0.004 rows=2 loops=1)
+                           Buffers: shared hit=2
+                     ->  Materialize  (cost=25.00..3442.10 rows=1227 width=15) (actual time=0.061..0.403 rows=1539 loops=2)
+                           Buffers: shared hit=563
+                           ->  Bitmap Heap Scan on detalle_pedido dp  (cost=25.00..3435.97 rows=1227 width=15) (actual time=0.120..0.531 rows=1539 loops=1)
+                                 Recheck Cond: ((fecha_hora_pedido_cache >= '2026-06-25 00:00:00-03'::timestamp with time zone) AND (fecha_hora_pedido_cache < '2026-06-26 00:00:00-03'::timestamp with time zone))
+                                 Filter: ((NOT eliminado) AND (NOT pedido_eliminado_cache))
+                                 Heap Blocks: exact=559
+                                 Buffers: shared hit=563
+                                 ->  Bitmap Index Scan on idx_tp6_detalle_fecha_cache  (cost=0.00..24.69 rows=1227 width=0) (actual time=0.061..0.061 rows=1547 loops=1)
+                                       Index Cond: ((fecha_hora_pedido_cache >= '2026-06-25 00:00:00-03'::timestamp with time zone) AND (fecha_hora_pedido_cache < '2026-06-26 00:00:00-03'::timestamp with time zone))
+                                       Buffers: shared hit=4
+ Planning:
+   Buffers: shared hit=8
+ Planning Time: 0.176 ms
+ Execution Time: 1.323 ms
+(29 rows)
+
+Ronda 2 — consulta normalizada
+                                                                                                           QUERY PLAN                                                                                                           
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=8633.04..8633.05 rows=2 width=39) (actual time=42.356..47.471 rows=2 loops=1)
+   Buffers: shared hit=10942
+   ->  Sort  (cost=8633.04..8633.05 rows=2 width=39) (actual time=42.356..47.469 rows=2 loops=1)
+         Sort Key: (sum(dp.subtotal)) DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=10942
+         ->  Finalize GroupAggregate  (cost=8627.36..8633.03 rows=2 width=39) (actual time=42.348..47.463 rows=2 loops=1)
+               Group Key: c.nombre
+               Buffers: shared hit=10942
+               ->  Gather Merge  (cost=8627.36..8632.99 rows=2 width=39) (actual time=42.162..47.452 rows=2 loops=1)
+                     Workers Planned: 1
+                     Workers Launched: 1
+                     Buffers: shared hit=10942
+                     ->  Partial GroupAggregate  (cost=7627.35..7632.76 rows=2 width=39) (actual time=18.365..18.456 rows=1 loops=2)
+                           Group Key: c.nombre
+                           Buffers: shared hit=10942
+                           ->  Sort  (cost=7627.35..7629.15 rows=717 width=14) (actual time=18.292..18.332 rows=770 loops=2)
+                                 Sort Key: c.nombre
+                                 Sort Method: quicksort  Memory: 98kB
+                                 Buffers: shared hit=10942
+                                 Worker 0:  Sort Method: quicksort  Memory: 25kB
+                                 ->  Hash Join  (cost=1.76..7593.35 rows=717 width=14) (actual time=0.038..18.022 rows=770 loops=2)
+                                       Hash Cond: (pr.id_categoria = c.id)
+                                       Buffers: shared hit=10934
+                                       ->  Nested Loop  (cost=0.71..7586.44 rows=717 width=15) (actual time=0.026..17.716 rows=770 loops=2)
+                                             Buffers: shared hit=10933
+                                             ->  Nested Loop  (cost=0.42..7360.61 rows=717 width=15) (actual time=0.017..14.512 rows=770 loops=2)
+                                                   Buffers: shared hit=6316
+                                                   ->  Parallel Seq Scan on pedido ped  (cost=0.00..3236.75 rows=287 width=8) (actual time=0.009..11.396 rows=294 loops=2)
+                                                         Filter: ((NOT eliminado) AND (fecha_hora >= '2026-06-25 00:00:00-03'::timestamp with time zone) AND (fecha_hora < '2026-06-26 00:00:00-03'::timestamp with time zone))
+                                                         Rows Removed by Filter: 99708
+                                                         Buffers: shared hit=1472
+                                                   ->  Index Scan using pk_detalle_pedido on detalle_pedido dp  (cost=0.42..14.34 rows=3 width=23) (actual time=0.008..0.010 rows=3 loops=588)
+                                                         Index Cond: (id_pedido = ped.id)
+                                                         Filter: (NOT eliminado)
+                                                         Buffers: shared hit=4844
+                                             ->  Index Scan using producto_pkey on producto pr  (cost=0.29..0.31 rows=1 width=16) (actual time=0.004..0.004 rows=1 loops=1539)
+                                                   Index Cond: (id = dp.id_producto)
+                                                   Buffers: shared hit=4617
+                                       ->  Hash  (cost=1.02..1.02 rows=2 width=15) (actual time=0.017..0.018 rows=2 loops=1)
+                                             Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                             Buffers: shared hit=1
+                                             ->  Seq Scan on categoria c  (cost=0.00..1.02 rows=2 width=15) (actual time=0.013..0.014 rows=2 loops=1)
+                                                   Buffers: shared hit=1
+ Planning:
+   Buffers: shared hit=43
+ Planning Time: 0.552 ms
+ Execution Time: 47.556 ms
+(48 rows)
+
+ROLLBACK

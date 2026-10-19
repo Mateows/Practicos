@@ -1,0 +1,54 @@
+-- ============================================================================
+-- TP3 Parte 5 — Plan ANTES (baseline, sin índices adicionales)
+-- Base: foodstore_tp3_carga
+-- Execution Time: 286.909 ms
+-- ============================================================================
+
+Limit  (cost=37674.68..37674.71 rows=10 width=156) (actual time=196.551..202.238 rows=10 loops=1)
+   ->  Sort  (cost=37674.68..37981.37 rows=122674 width=156) (actual time=196.548..202.233 rows=10 loops=1)
+         Sort Key: (sum(dp.cantidad)) DESC
+         Sort Method: top-N heapsort  Memory: 26kB
+         ->  Finalize GroupAggregate  (cost=17147.21..35023.74 rows=122674 width=156) (actual time=128.242..195.659 rows=45761 loops=1)
+               Group Key: c.id, p.id
+               ->  Gather Merge  (cost=17147.21..33030.29 rows=102228 width=156) (actual time=128.233..178.931 rows=83965 loops=1)
+                     Workers Planned: 2
+                     Workers Launched: 2
+                     ->  Partial GroupAggregate  (cost=16147.19..20230.62 rows=51114 width=156) (actual time=99.413..124.476 rows=27988 loops=3)
+                           Group Key: c.id, p.id
+                           ->  Incremental Sort  (cost=16147.19..19336.12 rows=51114 width=152) (actual time=116.641..132.030 rows=41157 loops=3)
+                                 Sort Key: c.id, p.id
+                                 Presorted Key: c.id
+                                 Full-sort Groups: 2  Sort Method: quicksort  Average Memory: 29kB  Peak Memory: 29kB
+                                 Pre-sorted Groups: 2  Sort Method: quicksort  Average Memory: 2800kB  Peak Memory: 2800kB
+                                 Worker 0:  Full-sort Groups: 1  Sort Method: quicksort  Average Memory: 25kB  Peak Memory: 25kB
+                                 Worker 1:  Full-sort Groups: 2  Sort Method: quicksort  Average Memory: 29kB  Peak Memory: 29kB
+                                   Pre-sorted Groups: 2  Sort Method: quicksort  Average Memory: 2591kB  Peak Memory: 2594kB
+                                 ->  Merge Join  (cost=16140.97..16909.73 rows=51114 width=152) (actual time=106.809..116.825 rows=41157 loops=3)
+                                       Merge Cond: (p.id_categoria = c.id)
+                                       ->  Sort  (cost=16109.08..16236.86 rows=51114 width=34) (actual time=106.502..111.097 rows=41157 loops=3)
+                                             Sort Key: p.id_categoria
+                                             Sort Method: external merge  Disk: 3192kB
+                                             Worker 0:  Sort Method: quicksort  Memory: 25kB
+                                             Worker 1:  Sort Method: external merge  Disk: 2864kB
+                                             ->  Hash Join  (cost=5198.52..12111.60 rows=51114 width=34) (actual time=29.157..90.222 rows=41157 loops=3)
+                                                   Hash Cond: (dp.id_producto = p.id)
+                                                   ->  Parallel Hash Join  (cost=3303.45..10082.35 rows=51114 width=12) (actual time=9.074..51.835 rows=41157 loops=3)
+                                                         Hash Cond: (dp.id_pedido = pe.id)
+                                                         ->  Parallel Seq Scan on detalle_pedido dp  (cost=0.00..6233.53 rows=207753 width=20) (actual time=0.011..17.059 rows=249304 loops=2)
+                                                         ->  Parallel Hash  (cost=2941.62..2941.62 rows=28946 width=8) (actual time=8.910..8.910 rows=16544 loops=3)
+                                                               Buckets: 65536  Batches: 1  Memory Usage: 2464kB
+                                                               ->  Parallel Seq Scan on pedido pe  (cost=0.00..2941.62 rows=28946 width=8) (actual time=0.012..18.957 rows=49633 loops=1)
+                                                                     Filter: (estado = 'ENTREGADO'::estado_pedido_enum)
+                                                                     Rows Removed by Filter: 150372
+                                                   ->  Hash  (cost=1270.03..1270.03 rows=50003 width=30) (actual time=19.870..19.870 rows=50003 loops=3)
+                                                         Buckets: 65536  Batches: 1  Memory Usage: 3638kB
+                                                         ->  Seq Scan on producto p  (cost=0.00..1270.03 rows=50003 width=30) (actual time=0.395..10.739 rows=50003 loops=3)
+                                                               Filter: activo
+                                       ->  Sort  (cost=31.89..32.92 rows=410 width=126) (actual time=0.454..0.455 rows=2 loops=2)
+                                             Sort Key: c.id
+                                             Sort Method: quicksort  Memory: 25kB
+                                             Worker 1:  Sort Method: quicksort  Memory: 25kB
+                                             ->  Seq Scan on categoria c  (cost=0.00..14.10 rows=410 width=126) (actual time=0.440..0.441 rows=2 loops=2)
+
+Planning Time: 6.782 ms
+Execution Time: 286.909 ms

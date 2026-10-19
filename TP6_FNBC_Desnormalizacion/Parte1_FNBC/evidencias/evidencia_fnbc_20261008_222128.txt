@@ -1,0 +1,36 @@
+BEGIN
+DO
+LOCK TABLE
+DO
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 3
+INSERT 0 2
+INSERT 0 2
+INSERT 0 3
+DO
+CREATE TABLE
+CREATE TABLE
+INSERT 0 2
+INSERT 0 3
+CREATE VIEW
+ sentido | lote_id | deposito_id | responsable_control_id 
+---------+---------+-------------+------------------------
+(0 rows)
+
+psql:TP6_FNBC_Desnormalizacion/tp_fnbc_control_lote.sql:404: NOTICE:  Equivalencia verificada: ambas diferencias son vacías y los conteos coinciden.
+DO
+ filas_originales | filas_responsable_deposito | filas_control_lote | filas_reconstruidas 
+------------------+----------------------------+--------------------+---------------------
+                3 |                          2 |                  3 |                   3
+(1 row)
+
+ lote_id | deposito_id | responsable_control_id 
+---------+-------------+------------------------
+     501 |          30 |                    801
+     502 |          30 |                    801
+     503 |          31 |                    802
+(3 rows)
+
+ROLLBACK

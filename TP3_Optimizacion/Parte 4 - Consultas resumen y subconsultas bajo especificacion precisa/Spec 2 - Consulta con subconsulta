@@ -1,0 +1,17 @@
+</tarea>
+Sobre el esquema Food Store, devolvé el nombre completo y email de los
+clientes que hayan realizado más de 3 pedidos en total (sin importar el estado).
+</tarea>
+
+</restriccion>
+-Usá una subconsulta, no un JOIN directo.
+
+-Ordená por nombre_completo ascendente
+- Sin SELECT *.
+</restriccion>
+
+ 
+    
+
+     
+    

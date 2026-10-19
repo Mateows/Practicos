@@ -1,6 +1,7 @@
-**TECNICATURA UNIVERSITARIA EN PROGRAMACIÓN**                    **UTN FRM - Base de datos 2**
+**TECNICATURA UNIVERSITARIA EN PROGRAMACIÓN**
+**UTN FRM — Base de Datos II**
 
-# Protocolo de Seguridad — TP2 Concurrencia e IA
+# Protocolo de seguridad — Origen en TP2 y aplicación a TP2–TP6
 
 Alumnos: Liendo Mateo, Avila Lucas, Pagano Amanda.
 
@@ -8,88 +9,135 @@ Comisión: 4.
 
 Profesor: Neira Sergio.
 
-Este documento adapta el protocolo de tres pasos de la cátedra (copia, transacción, respaldo) a mi entorno concreto: PostgreSQL 17 corriendo localmente en Windows, administrado por línea de comandos con psql desde Git Bash.
+Este protocolo nació en TP2 Concurrencia e IA, adaptando los tres pasos de la cátedra —copia, transacción y respaldo— al entorno PostgreSQL 17 en Windows, administrado mediante psql desde Git Bash. Su aplicación se extiende a los trabajos posteriores.
 
-## Entorno de trabajo
+El entorno original de TP2 documentó PostgreSQL 17.11. Esta referencia histórica no constituye una comprobación de la versión instalada actualmente.
 
-- Motor: PostgreSQL 17.11, instalado localmente.
-- Base de datos de desarrollo: foodstore_dev — contiene el esquema del proyecto integrador FoodStore (TP1), cargado desde TP1_FoodStore/schema.sql.
-- Base de datos de trabajo/pruebas: foodstore_copia_trabajo copia exacta de foodstore_dev, creada específicamente para este TP.
-- Cliente: psql desde la terminal (Git Bash).
+## Autorización humana
 
-## Paso 1 – Copia
+El agente puede leer, analizar y proponer. Cada modificación de archivos requiere autorización explícita del grupo y debe respetar el alcance aprobado.
 
-Ningún script generado por IA, ni propio, se ejecuta directamente sobre foodstore_dev. Todo se prueba primero sobre una copia de trabajo.
+Guardar un script no autoriza ejecutarlo. Conectarse a PostgreSQL, ejecutar consultas, generar respaldos, crear o restaurar bases y realizar operaciones destructivas requieren autorización específica. Tampoco se realizan git add, commit o push sin autorización.
 
-**Comando usado para crear la copia:**
+Un resultado correcto permite evaluar una propuesta, pero no autoriza COMMIT ni otros cambios persistentes.
 
-```
-createdb -U postgres -T foodstore_dev foodstore_copia_trabajo
-```
+## Paso 1 — Copia y selección del entorno
 
-Esto crea foodstore_copia_trabajo a partir de la plantilla foodstore_dev, con la misma estructura y los mismos datos. Si en algún momento la copia queda en un estado inconsistente por una prueba fallida, se elimina y se vuelve a crear con el mismo comando (después de borrarla con dropdb -U postgres foodstore_copia_trabajo).
+No se ejecutan pruebas sobre foodstore_dev. Antes de una ejecución autorizada se debe identificar la base de destino y revisar el origen y contenido de la copia.
 
-Cuándo se salta: nunca. Toda prueba de este TP se hace contra foodstore_copia_trabajo, no contra foodstore_dev.
+### Bases y antecedentes
 
-## Paso 2 – Transacción
+| Base | Uso o antecedente documentado |
+|---|---|
+| foodstore_dev | Base de desarrollo del esquema FoodStore de TP1. No es destino de pruebas. |
+| foodstore_copia_trabajo — etapa inicial | En TP2 se creó como copia de foodstore_dev. Ese origen no garantiza que conserve idéntico contenido después de trabajos posteriores. |
+| foodstore_tp3_carga | Base de carga masiva utilizada en las mediciones históricas de TP3, TP4 y TP5. |
+| foodstore_copia_trabajo — TP6 Parte 2 | Copia de trabajo con la carga masiva utilizada para medir la desnormalización. No debe confundirse con la copia pequeña inicial. |
+| foodstore_copia_tp6_parte1 | Copia pequeña conservada para TP6 Parte 1, según lo informado por el grupo. No se considera equivalente a la copia masiva. |
 
-Todo script que modifica datos o estructura se ejecuta primero dentro de una transacción explícita, para poder revisar el efecto antes de confirmarlo.
+La carga utilizada en TP6 Parte 2 se documentó con 200005 pedidos, 499571 detalles, 50003 productos y 2 categorías. Sus consultas midieron el día histórico 25/06/2026 en America/Buenos_Aires.
 
-**Cómo pruebo los cambios antes de aplicarlos**
+Estos antecedentes no son una comprobación actual de existencia, contenido o procedencia de todas las bases. Deben revisarse antes de una operación autorizada.
 
-Antes de tocar la base de verdad, todo lo que la IA (o yo misma) proponga como script lo corro primero dentro de una transacción, sobre la copia de trabajo (foodstore_copia_trabajo).
+Fuentes: [documentación de TP2](TP2_Concurrencia_IA/README.md), [DUIA de TP3](TP3_Optimizacion/DUIA_COMPLETA.md) e [informe de TP6 Parte 2](TP6_FNBC_Desnormalizacion/Parte2_Desnormalizacion/informe_parte2_desnormalizacion.md). El nombre foodstore_copia_tp6_parte1 se incorpora conforme a la información del grupo.
 
-La lógica es simple: abro la transacción con BEGIN, corro el script, y antes de confirmar nada reviso qué pasó con un SELECT para ver si los datos quedaron como esperaba, o con \d nombre_tabla si lo que cambió fue la estructura.
+### Compatibilidad con los scripts de TP6
 
-Si todo cierra bien, recién ahí hago COMMIT. Si algo no se ve como debería, hago ROLLBACK y listo, como si nunca hubiera pasado nada.
+Los scripts actuales de TP6 comprueban que el destino sea foodstore_copia_trabajo. La copia conservada foodstore_copia_tp6_parte1 no habilita ejecutar esos scripts sin revisar antes su destino.
 
-Esto me sirve sobre todo para no confiar ciegamente en lo que la IA generó: puedo ver el efecto real antes de que sea definitivo, y si algo está mal, deshacerlo sin ningún costo.
+No cambiar las comprobaciones, renombrar bases ni reemplazar una copia automáticamente para adaptar el entorno.
 
-**Flujo usado:**
+## Paso 2 — Transacción y validación
 
-```
+Los INSERT, UPDATE, DELETE y cambios estructurales que PostgreSQL admite dentro de una transacción se validan mediante un bloque explícito:
+
+```sql
 BEGIN;
 
--- acá va el script generado por la IA o propio
--- se revisa el resultado con SELECT, \d, conteo de filas afectadas, etc.
+-- Operaciones previamente revisadas y autorizadas.
+-- Comprobaciones de resultados y estructura.
 
 ROLLBACK;
--- si algo no cierra, se descarta sin dejar rastro
-
--- o
-
-COMMIT;
--- solo si el resultado fue el esperado
 ```
 
-Nos conectamos a la copia de trabajo con: psql -U postgres -d foodstore_copia_trabajo
+ROLLBACK es el cierre por defecto, también cuando las comprobaciones son correctas. Para una aplicación persistente, el grupo debe autorizar explícitamente los cambios y el COMMIT.
 
-**Cuándo se salta:** nunca. Ningún INSERT, UPDATE, DELETE o cambio de estructura se ejecuta fuera de un bloque BEGIN...COMMIT/ROLLBACK.
+No ejecutar un script en forma parcial o cambiar su cierre sin revisar qué efectos quedarían pendientes. Si ocurre un error antes del cierre, descartar la transacción en la misma sesión o cerrar la conexión; no confirmar para intentar resolver el error.
 
-## Paso 3 – Respaldo
+### Operaciones fuera de la transacción
 
-Antes de aplicar cualquier cambio estructural (ALTER TABLE, DROP, CREATE INDEX, migraciones), se genera un respaldo independiente de la copia de trabajo, para poder restaurar sin depender del ROLLBACK de la transacción.
+CREATE DATABASE y DROP DATABASE no pueden ejecutarse dentro de BEGIN...ROLLBACK. Las utilidades createdb y dropdb realizan esas operaciones y no quedan protegidas por el ROLLBACK de un script de validación.
 
-**Comando usado:**
+Su autorización debe ser específica y previa. No encadenar borrado y recreación como recuperación automática.
 
-```
-pg_dump -U postgres -d foodstore_copia_trabajo -f respaldo_foodstore_copia_trabajo.sql
-```
+Otros comandos con restricciones transaccionales deben revisarse individualmente antes de proponer su ejecución.
 
-El archivo de respaldo se guarda dentro de la carpeta TP2_Concurrencia_IA/parte1/, junto con el script de restricciones y la DUIA de la Parte 1 (este protocolo vive en la raíz del repo, según lo pedido en la consigna),
+Referencias oficiales: [CREATE DATABASE](https://www.postgresql.org/docs/17/sql-createdatabase.html) y [DROP DATABASE](https://www.postgresql.org/docs/17/sql-dropdatabase.html).
 
-fechado si hace falta generar más de uno.
+### Scripts históricos
 
-Para restaurar en caso de que algo salga mal:
+La presencia de BEGIN o de una prueba previa no garantiza que un script termine en ROLLBACK. Algunos archivos históricos contienen COMMIT y pueden dejar cambios persistentes, por ejemplo:
 
-dropdb -U postgres foodstore_copia_trabajo
+- [Carga masiva de TP3](TP3_Optimizacion/Parte%201%20-%20Poblar%20la%20base%20masivamente%20con%20datos%20generados%20por%20IA/seed_masivo.sql).
+- [Mediciones de Q4 de TP5](TP5_Indices_Vistas/Parte_A_Indices/medir_q4_rondas.sql).
+- [Mediciones de escritura e índices en producto de TP5](TP5_Indices_Vistas/Parte_A_Indices/medir_escritura_producto_dos_indices.sql).
 
-createdb -U postgres foodstore_copia_trabajo
+Se deben leer completos antes de ejecutarlos y obtener autorización acorde con sus efectos. No ejecutar todos los SQL del repositorio como una instalación secuencial.
 
-psql -U postgres -d foodstore_copia_trabajo -f respaldo_foodstore_copia_trabajo.sql
+## Paso 3 — Respaldo
 
-**Cuándo se salta:** nunca. Todo cambio de tipo DDL se respalda antes de aplicarse.
+Antes de una operación estructural autorizada, generar un respaldo independiente de la base de destino.
+
+Los respaldos nuevos se conservan fechados fuera del repositorio, como los utilizados en `C:/Users/hp/Respaldos_BD2`. Esta ruta local corresponde a este equipo y no es portable a otros entornos.
+
+Los respaldos pueden utilizar los siguientes formatos:
+
+| Formato | Extensión habitual | Herramienta de restauración |
+|---|---|---|
+| SQL plano | .sql | psql |
+| Custom | .dump | pg_restore |
+
+Los respaldos de TP6 se generaron en formato custom, según lo informado por el grupo. La extensión es una convención: antes de restaurar se debe revisar el formato real del archivo y elegir la herramienta correspondiente. Un archivo custom no se restaura ejecutándolo como SQL con psql.
+
+Un nombre de respaldo debe identificar la base, la fecha y hora y el motivo, por ejemplo:
+
+- SQL plano: `respaldo_<base>_AAAAMMDD_HHMMSS_antes_<operacion>.sql`.
+- Custom: `respaldo_<base>_AAAAMMDD_HHMMSS_antes_<operacion>.dump`.
+
+No sobrescribir respaldos anteriores. Registrar la base de origen, el archivo y su formato, y comprobar que la generación haya finalizado correctamente. Que un archivo exista no demuestra por sí solo que pueda restaurarse.
+
+Se conserva como antecedente el [respaldo histórico de TP2](TP2_Concurrencia_IA/parte1/respaldo_foodstore_copia_trabajo.sql), originalmente guardado junto al trabajo de integridad. No moverlo, sustituirlo ni asumir que representa la carga masiva usada posteriormente.
+
+La ubicación y los antecedentes de respaldos no equivalen a una auditoría actual de su contenido o restaurabilidad.
+
+## Restauración, recreación y errores
+
+Ante una prueba fallida, primero descartar la transacción cuando corresponda y conservar la información del error. No borrar ni recrear automáticamente la copia.
+
+Antes de proponer una restauración o recreación se debe revisar con el grupo:
+
+1. Base de origen y estado que se desea recuperar.
+2. Base de destino exacta y contenido que podría perderse.
+3. Respaldo elegido, fecha, formato y alcance.
+4. Operaciones necesarias, incluidas las que quedan fuera de transacción.
+
+Presentar un plan concreto y esperar autorización específica. Cuando sea viable, preferir restaurar en una base nueva autorizada para comparar antes de reemplazar una existente. No asumir autorización para eliminar la base de destino, desconectar otras sesiones o sobrescribir información.
+
+## Evidencias, resultados y objetos instalados
+
+Los scripts, planes y decisiones de aceptación documentan trabajos realizados en un momento determinado. No prueban que sus índices, triggers, vistas o datos estén instalados actualmente en otra base o copia.
+
+Las implementaciones de TP6 terminaron con ROLLBACK: ni la migración FNBC ni las columnas, índice y triggers de desnormalización quedaron persistidos por esos ensayos.
+
+Las pruebas de sincronización de TP6 fueron secuenciales. La concurrencia entre sesiones no fue probada y el costo adicional de escritura no fue cuantificado.
+
+Consultar:
+
+- [README de TP6](TP6_FNBC_Desnormalizacion/README.md).
+- [Informe de FNBC](TP6_FNBC_Desnormalizacion/Parte1_FNBC/informe_parte1_fnbc.md).
+- [Informe de desnormalización](TP6_FNBC_Desnormalizacion/Parte2_Desnormalizacion/informe_parte2_desnormalizacion.md).
+- [Informe integrador](Informe_General.md).
 
 ## Regla de fondo
 
-Se delega la escritura del script a la IA (OpenCode), nunca la decisión de aplicarlo. Todo lo que la IA proponga en este TP se lee línea por línea, se prueba sobre la copia de trabajo dentro de una transacción, y se defiende oralmente antes de darlo por bueno.
+La IA propone; el grupo revisa, autoriza y decide la aplicación. La autorización se limita a la operación aprobada. Ni una explicación convincente, ni una medición favorable, ni un script histórico sustituyen esa autorización.

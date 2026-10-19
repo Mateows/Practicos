@@ -1,0 +1,66 @@
+BEGIN
+SET
+DO
+LOCK TABLE
+DO
+ALTER TABLE
+ALTER TABLE
+ categoria | total_vendido 
+-----------+---------------
+ Bebidas   |    5589534.40
+ Pizzas    |    5215387.22
+(2 rows)
+
+                                                                                                           QUERY PLAN                                                                                                           
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=7731.40..7731.41 rows=2 width=150) (actual time=55.850..62.284 rows=2 loops=1)
+   Buffers: shared hit=8455
+   ->  Sort  (cost=7731.40..7731.41 rows=2 width=150) (actual time=55.849..62.281 rows=2 loops=1)
+         Sort Key: (sum(dp.subtotal)) DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=8455
+         ->  Finalize GroupAggregate  (cost=7728.19..7731.39 rows=2 width=150) (actual time=55.820..62.253 rows=2 loops=1)
+               Group Key: c.nombre
+               Buffers: shared hit=8455
+               ->  Gather Merge  (cost=7728.19..7731.35 rows=2 width=150) (actual time=55.550..62.237 rows=2 loops=1)
+                     Workers Planned: 1
+                     Workers Launched: 1
+                     Buffers: shared hit=8455
+                     ->  Partial GroupAggregate  (cost=6728.18..6731.12 rows=2 width=150) (actual time=20.139..20.275 rows=1 loops=2)
+                           Group Key: c.nombre
+                           Buffers: shared hit=8455
+                           ->  Sort  (cost=6728.18..6729.15 rows=389 width=125) (actual time=20.040..20.102 rows=770 loops=2)
+                                 Sort Key: c.nombre
+                                 Sort Method: quicksort  Memory: 98kB
+                                 Buffers: shared hit=8455
+                                 Worker 0:  Sort Method: quicksort  Memory: 25kB
+                                 ->  Hash Join  (cost=1.76..6711.44 rows=389 width=125) (actual time=0.055..19.708 rows=770 loops=2)
+                                       Hash Cond: (pr.id_categoria = c.id)
+                                       Buffers: shared hit=8447
+                                       ->  Nested Loop  (cost=0.71..6707.22 rows=389 width=15) (actual time=0.033..19.383 rows=770 loops=2)
+                                             Buffers: shared hit=8446
+                                             ->  Nested Loop  (cost=0.42..6581.80 rows=389 width=15) (actual time=0.027..15.984 rows=770 loops=2)
+                                                   Buffers: shared hit=3829
+                                                   ->  Parallel Seq Scan on pedido ped  (cost=0.00..3236.75 rows=311 width=8) (actual time=0.012..13.115 rows=294 loops=2)
+                                                         Filter: ((NOT eliminado) AND (fecha_hora >= '2026-06-25 00:00:00-03'::timestamp with time zone) AND (fecha_hora < '2026-06-26 00:00:00-03'::timestamp with time zone))
+                                                         Rows Removed by Filter: 99708
+                                                         Buffers: shared hit=1472
+                                                   ->  Index Scan using pk_detalle_pedido on detalle_pedido dp  (cost=0.42..10.75 rows=1 width=23) (actual time=0.008..0.009 rows=3 loops=588)
+                                                         Index Cond: (id_pedido = ped.id)
+                                                         Filter: (NOT eliminado)
+                                                         Buffers: shared hit=2357
+                                             ->  Index Scan using producto_pkey on producto pr  (cost=0.29..0.32 rows=1 width=16) (actual time=0.004..0.004 rows=1 loops=1539)
+                                                   Index Cond: (id = dp.id_producto)
+                                                   Buffers: shared hit=4617
+                                       ->  Hash  (cost=1.02..1.02 rows=2 width=126) (actual time=0.023..0.033 rows=2 loops=1)
+                                             Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                             Buffers: shared hit=1
+                                             ->  Seq Scan on categoria c  (cost=0.00..1.02 rows=2 width=126) (actual time=0.016..0.017 rows=2 loops=1)
+                                                   Buffers: shared hit=1
+ Planning:
+   Buffers: shared hit=31
+ Planning Time: 0.861 ms
+ Execution Time: 62.538 ms
+(48 rows)
+
+ROLLBACK

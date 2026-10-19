@@ -1,0 +1,12 @@
+                                                     QUERY PLAN                                                     
+--------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=2388.57..2416.24 rows=11069 width=32) (actual time=11.234..11.937 rows=11048 loops=1)
+   Sort Key: precio_lista
+   Sort Method: quicksort  Memory: 986kB
+   ->  Seq Scan on producto  (cost=0.00..1645.05 rows=11069 width=32) (actual time=0.016..8.407 rows=11048 loops=1)
+         Filter: ((precio_lista >= '1000'::numeric) AND (precio_lista <= '3000'::numeric) AND (id_categoria = 1))
+         Rows Removed by Filter: 38955
+ Planning Time: 2.418 ms
+ Execution Time: 12.384 ms
+(8 filas)
+

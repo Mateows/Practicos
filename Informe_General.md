@@ -12,103 +12,232 @@
 
 ## Introducción
 
-Este informe integra los cinco trabajos prácticos de la cursada sobre un mismo proyecto: **FoodStore**. Cada TP retoma y amplía el esquema anterior, desde el modelado inicial (TP1) hasta índices, vistas y vista materializada sobre una base cargada masivamente (TP5), por lo que el trabajo debe leerse como una progresión continua, no como cinco entregas aisladas.
+Este informe integra los seis trabajos prácticos de la cursada sobre **FoodStore**. El recorrido comprende modelado y normalización (TP1), integridad y concurrencia (TP2), carga masiva y optimización (TP3), reportes analíticos (TP4), índices y vistas (TP5), y FNBC y desnormalización controlada (TP6).
 
-Toda la cursada se hizo bajo un flujo obligatorio de IA asistida: **Kiro** para especificar y planificar cada pieza, y un agente de generación de código (**OpenCode** o **GitHub Copilot**, según el integrante) para producirla. En las correcciones del TP5 posteriores a la devolución se usaron además **Claude Code** y **Claude** como asistente de chat, registrados en la DUIA con su prompt. Ninguna propuesta de la IA se aceptó por su explicación: cada afirmación de rendimiento, cada script y cada plan de ejecución se verificó contra el motor real (PostgreSQL 17), y cada TP documenta su Declaración de Uso de IA (DUIA): qué se pidió, qué se generó, qué se aceptó y qué se corrigió o descartó.
+En TP1 a TP5 se documentó el uso de Kiro, OpenCode o GitHub Copilot según la etapa y el integrante. En las correcciones de TP5 también se utilizaron Claude Code y Claude, registrados en su DUIA. En TP6 se utilizaron **ChatGPT y Codex CLI** para analizar, proponer scripts, revisar evidencias y preparar documentación. Las propuestas se revisaron y los cambios de archivos se realizaron con autorización humana; las ejecuciones en PostgreSQL fueron realizadas por el grupo y sus salidas se utilizaron como evidencia. No se atribuyen a TP6 las herramientas utilizadas en otras entregas.
 
-Desde TP2 se sigue además un **protocolo de seguridad** de tres pasos para trabajar con scripts generados por IA sin arriesgar la base real: (1) **copia** — nunca se ejecuta nada sobre `foodstore_dev`, todo corre contra una copia de trabajo; (2) **transacción** — todo cambio se prueba primero dentro de `BEGIN...ROLLBACK`, revisando el efecto real antes de confirmar; (3) **respaldo** — todo cambio estructural se respalda con `pg_dump` antes de aplicarse. El TP2 documenta además casos reales de agentes de IA que borraron bases de producción por no seguir exactamente este tipo de disciplina, como justificación del protocolo.
+Las fuentes principales son las declaraciones y documentos de cada trabajo: [TP1](TP1_FoodStore/README.md), [TP2](TP2_Concurrencia_IA/README.md), [DUIA de TP3](TP3_Optimizacion/DUIA_COMPLETA.md), [DUIA de TP4](TP4_Reportes_Analiticos/DUIA_TP4.md), [DUIA de TP5](TP5_Indices_Vistas/duia.md) y [documentación de TP6](TP6_FNBC_Desnormalizacion/README.md).
+
+El [protocolo de seguridad](protocolo_seguridad.md) establece copia de trabajo, transacciones explícitas y respaldo previo a DDL. Los ensayos históricos deben interpretarse según su base y evidencia: TP3 a TP5 documentan trabajo sobre `foodstore_tp3_carga`, mientras TP6 se validó en `foodstore_copia_trabajo`.
+
+**Una decisión histórica de aceptar una propuesta no demuestra que el objeto esté instalado actualmente.** Se distingue entre resultados medidos, pruebas revertidas y aplicaciones permanentes documentadas. Este informe no constituye un inventario actual de PostgreSQL ni una instalación para ejecutar todos los scripts en secuencia.
 
 ## TP1 — Modelado ER, normalización y DDL
 
-Diseño completo de la base FoodStore desde cero: modelo entidad-relación, derivación al modelo relacional, normalización hasta BCNF y script DDL final para PostgreSQL.
+Diseño completo de FoodStore desde cero: modelo entidad-relación, derivación al modelo relacional, normalización hasta BCNF y DDL para PostgreSQL.
 
 - **MER:** diccionario de entidades y atributos, cardinalidades y participaciones.
-- **MR:** reglas formales de pasaje del ER al relacional, esquemas con PK/FK.
-- **Normalización:** clave candidata universal, listado de dependencias funcionales (DF1 a DF4) y demostración paso a paso de 1FN, 2FN, 3FN y BCNF.
-- **DDL (`schema.sql`):** tipos `ENUM`, claves foráneas con `ON DELETE RESTRICT`, restricciones `CHECK`/`UNIQUE`, columnas generadas (`STORED`), 3 índices B-Tree justificados y datos de prueba.
+- **MR:** reglas de pasaje del ER al relacional y esquemas con PK/FK.
+- **Normalización:** clave candidata universal, dependencias funcionales DF1 a DF4 y demostración de 1FN, 2FN, 3FN y BCNF.
+- **DDL:** tipos ENUM, restricciones CHECK y UNIQUE, claves foráneas, columnas generadas STORED, tres índices B-tree justificados y datos de prueba.
 
-Entregado como paquete completo: informe PDF formal, diagrama ER en alta definición (300 DPI), `schema.sql` comentado y probado, y el código DBML fuente del diagrama.
+La entrega incluye el [informe PDF](TP1_FoodStore/TP1_FoodStore_Grupo_Avila_Pagano_Liendo.pdf), el [diagrama ER](TP1_FoodStore/diagrama_er.pdf), el [script schema.sql](TP1_FoodStore/schema.sql) y el [código DBML](TP1_FoodStore/dbdiagram_code.dbml).
 
 ## TP2 — Integridad, transacciones y concurrencia
 
-Laboratorio grupal sobre el esquema FoodStore, cubriendo cuatro partes.
+Laboratorio sobre FoodStore, organizado en cuatro partes.
 
-**Parte 0 — Protocolo de seguridad.** Los tres pasos (copia, transacción, respaldo) descritos en la introducción, adaptados al entorno real (PostgreSQL 17.11, Git Bash, `psql`).
+**Parte 0 — Protocolo de seguridad.** Se documentaron copia, transacción y respaldo para PostgreSQL 17.11, Git Bash y psql.
 
-**Parte 1 — Restricciones de integridad (triggers PL/pgSQL)**, generadas con OpenCode en modo Plan → Build:
+**Parte 1 — Restricciones de integridad.** Se generaron triggers PL/pgSQL con OpenCode en modo Plan → Build para:
 
-1. Transición de estado: un pedido `ENTREGADO` o `CANCELADO` no puede cambiar a ningún otro estado.
-2. Fecha no futura: `fecha_hora` de un pedido no puede ser posterior a `now()`.
-3. Validación de stock: la `cantidad` en `detalle_pedido` no puede superar el stock disponible del producto.
+1. Impedir cambios de estado después de ENTREGADO o CANCELADO.
+2. Rechazar fechas de pedido posteriores a `now()`.
+3. Validar que la cantidad del detalle no supere el stock disponible.
 
-En revisión posterior se detectó que el trigger de transición de estado dejaba habilitado el pasaje `ENTREGADO → CANCELADO` (y viceversa); se corrigió para bloquear cualquier cambio de estado una vez alcanzado un estado final. Los 5 casos de prueba (3 inválidos + 1 válido + el caso corregido) se verificaron dentro de una transacción sobre la copia de trabajo, con `pg_dump` previo.
+En revisión posterior se detectó que una versión permitía ENTREGADO → CANCELADO y viceversa. Se corrigió para bloquear cualquier cambio una vez alcanzado un estado final. Los cinco casos documentados se verificaron sobre la copia de trabajo dentro de una transacción, con respaldo previo. Véanse el [script de restricciones](TP2_Concurrencia_IA/parte1/restricciones_integridad.sql) y la [DUIA de Parte 1](TP2_Concurrencia_IA/parte1/DUIA_parte1.md).
 
-**Parte 2 — Anomalías de concurrencia**, con dos sesiones `psql` simultáneas:
+Estas pruebas históricas no implican que esos triggers estén instalados en toda copia posterior.
 
-- **Lectura no repetible:** reproducida en `READ COMMITTED` (una misma consulta devuelve dos valores distintos dentro de la misma transacción); resuelta con `REPEATABLE READ`.
-- **Lectura fantasma:** un `COUNT(*)` cambia dentro de la misma transacción porque otra sesión insertó una fila que cumple el filtro; resuelta con `SERIALIZABLE`.
-- **Espera por bloqueo:** dos sesiones piden `SELECT ... FOR UPDATE` sobre la misma fila; la segunda queda bloqueada hasta que la primera hace `COMMIT`.
+**Parte 2 — Anomalías de concurrencia.** Se trabajó con dos sesiones psql simultáneas:
 
-Cada explicación de la IA se confirmó reproduciendo el escenario en el motor real, antes y después de cambiar el nivel de aislamiento.
+- Lectura no repetible en READ COMMITTED, resuelta con REPEATABLE READ.
+- Lectura fantasma en READ COMMITTED, tratada con SERIALIZABLE.
+- Espera por bloqueo entre dos sesiones que solicitan FOR UPDATE sobre la misma fila.
 
-**Parte 3 — Lectura crítica de scripts SQL**, con Kiro. Se analizaron dos scripts con errores reales de lógica:
+Los escenarios están documentados en el [informe de concurrencia](TP2_Concurrencia_IA/parte2/informe_concurrencia.md). Estas pruebas pertenecen a TP2; no sustituyen las pruebas concurrentes pendientes de la adaptación de TP6.
 
-1. `UPDATE funcion SET activa = FALSE;` sin `WHERE` — desactiva **todas** las filas, no solo las buscadas.
-2. `DELETE ... WHERE id NOT IN (SELECT categoria_id FROM producto)` — si la subconsulta devuelve algún `NULL`, `NOT IN` no borra **ninguna** fila (falla silenciosa).
-
-Para cada caso se documentó el efecto real, por qué no coincide con la consigna, y la versión corregida (agregando el filtro faltante y `categoria_id IS NOT NULL` / `NOT EXISTS`, respectivamente). Esta parte también analiza casos reales documentados de agentes de IA que borraron bases de producción (Replit, Google Gemini CLI, entre otros) como fundamento del protocolo de la Parte 0: en todos los casos la falla no fue de sintaxis sino de no confirmar el entorno, no revisar el efecto antes de ejecutar, y confiar en el reporte del propio agente.
+**Parte 3 — Lectura crítica de SQL.** Se analizaron un UPDATE sin WHERE y un DELETE con NOT IN susceptible a valores NULL. Para cada caso se explicó el efecto real y se propuso una corrección. También se revisaron casos documentados de agentes de IA que afectaron bases de producción, como fundamento del protocolo. Fuente: [ejercicio de lectura crítica](TP2_Concurrencia_IA/parte3/ejercicio_lectura_critica.md).
 
 ## TP3 — Carga masiva y optimización con IA
 
-Base poblada masivamente (~200.000 pedidos, 499.571 líneas de detalle) para medir y optimizar con `EXPLAIN ANALYZE`. Cinco partes repartidas en el equipo.
+Se pobló FoodStore a escala de aproximadamente 200000 pedidos y se analizaron consultas mediante EXPLAIN ANALYZE. Los conteos de detalles corresponden a las cargas registradas en cada etapa: la bitácora de Parte 5 informa 498608 detalles, mientras la carga utilizada posteriormente en TP6 contiene 499571. No se consideran todas las mediciones como realizadas sobre una única instancia idéntica.
 
-**Parte 1 — Carga masiva.** Adaptación de un generador de la cátedra al esquema real (`generate_series`, pools de identificadores). Se detectó y corrigió un **bug real**: subconsultas `ORDER BY random() LIMIT 1` que PostgreSQL evaluaba una sola vez para toda la sentencia en lugar de una vez por fila, degenerando la distribución de claves foráneas; se reemplazó por selección aleatoria por fila con `array_agg` + índice aleatorio, con `ON CONFLICT DO NOTHING` para la clave compuesta. Verificado con un script de solo lectura (conteos, integridad referencial, duplicados, distribuciones).
+**Parte 1 — Carga masiva.** Se adaptó el generador al esquema real con generate_series y pools de identificadores. Se corrigió un problema de aleatorización: subconsultas ORDER BY random() LIMIT 1 podían evaluarse una sola vez para toda la sentencia. La versión final utiliza arreglos y selección aleatoria por fila, con ON CONFLICT DO NOTHING para respetar la PK compuesta. Se verificaron conteos, integridad, duplicados y distribuciones.
 
-**Parte 2 — `EXPLAIN ANALYZE` sobre 3 consultas lentas**, con índices propuestos por Kiro y contrastados contra el planificador real:
+**Parte 2 — Optimización de tres consultas.**
 
-- **Q1** (pedidos pendientes por fecha): el índice `(estado, fecha_hora DESC)` cambió el plan de `Parallel Seq Scan + Sort + Gather Merge` a `Index Scan` — de ~33,7 ms a ~0,9 ms.
-- **Q2** (productos por categoría y precio): el índice propuesto no mejoró el resultado real; se descartó.
-- **Q3** (facturación por cliente y fecha): los índices probados tampoco mejoraron; uno eliminó el paralelismo del plan original y el otro no fue elegido por el planificador. Ambos se descartaron.
+- **Q1:** el índice `(estado, fecha_hora DESC)` cambió Parallel Seq Scan + Sort + Gather Merge por Index Scan: **33.698 ms → 0.908 ms**, aproximadamente 37 veces.
+- **Q2:** el índice de categoría y precio no eliminó el ordenamiento ni mejoró el tiempo: **12.384 ms → 12.787 ms**. Se descartó.
+- **Q3:** los índices de fecha de pedido e identificador de pedido en detalle no mejoraron el resultado. La medición final fue **160.112 ms → 198.558 ms**; el primero eliminó el paralelismo y el segundo no fue utilizado. Ambos se descartaron.
 
-De 4 índices propuestos en total (incluyendo Parte 5), solo 1 mostró mejora real y quedó aplicado; el resto se revirtió tras medir, documentando por qué no funcionó.
+Los **cuatro índices evaluados en esta parte** fueron uno para Q1, uno para Q2 y dos para Q3. Solo Q1 mostró mejora y se conservó según la documentación. Este conteo no incluye las propuestas de Parte 5. Fuente: [tabla comparativa de Parte 2](TP3_Optimizacion/Parte%202%20-%20Consultas%20lentas,%20EXPLAIN%20y%20optimizacion%20medida/tabla_comparativa.md).
 
-**Parte 3 — Lectura crítica de un plan real:** de las afirmaciones evaluadas, tres resultaron incorrectas y una correcta (el tiempo total de ejecución de 0,908 ms, confirmado por el plan).
+**Parte 3 — Lectura crítica.** Se contrastaron afirmaciones con el plan real: tres resultaron incorrectas y una correcta, correspondiente al tiempo total de 0.908 ms.
 
-**Parte 4 — Consultas resumen bajo especificación precisa**, cada una con una alternativa de estructura distinta (agregación vs. CTE; subconsulta `IN` vs. `JOIN`) y verificación de equivalencia con `EXCEPT` en ambos sentidos.
+**Parte 4 — Consultas bajo especificación.** Se construyeron alternativas de agregación frente a CTE y subconsulta IN frente a JOIN, verificando equivalencia mediante EXCEPT en ambos sentidos.
 
-**Parte 5 — Competencia de optimización** sobre una consulta propia: de 286,909 ms (baseline) a 200,606 ms (~1,43x), con el índice `idx_p5_pedido_estado` aplicado tras confirmar con `EXPLAIN ANALYZE` que cambiaba el escaneo a bitmap scan manteniendo el paralelismo; otro índice parcial se descartó por evidencia previa de que el planificador lo ignoraba.
+**Parte 5 — Competencia de optimización.** La medición pasó de **286.909 ms a 200.606 ms**, aproximadamente 1.43 veces, para la estrategia evaluada. Se distinguen sus componentes:
+
+- `idx_p5_pedido_estado` **fue utilizado** mediante Parallel Bitmap Heap Scan y mantuvo el paralelismo. La medición de esa propuesta por separado fue aproximadamente 264 ms.
+- `idx_p5_producto_categoria_activo` **no fue utilizado directamente**: el plan conservó Seq Scan sobre producto. La bitácora lo mantuvo como parte de la estrategia, pero la desaparición del sort a disco y el resultado de 200.606 ms **no demuestran una mejora causada por ese índice parcial**.
+- El índice adicional sobre `detalle_pedido(id_pedido)` se descartó por evidencia previa de que el planificador lo ignoraba.
+
+Los scripts de ensayo terminaron con ROLLBACK. La bitácora distingue esas pruebas de cualquier aplicación permanente mediante comandos manuales posteriores; no se deduce el estado actual de una base a partir de la aceptación histórica.
+
+Fuentes: [bitácora de Parte 5](TP3_Optimizacion/Parte%205%20-Competencia%20de%20optimizacion%20entre%20equipos/bitacora_p5.md), [plan posterior](TP3_Optimizacion/Parte%205%20-Competencia%20de%20optimizacion%20entre%20equipos/planes/plan_p5_despues.txt) y [DUIA consolidada](TP3_Optimizacion/DUIA_COMPLETA.md).
 
 ## TP4 — Reportes analíticos asistidos por IA
 
-Continuación de TP3 sobre la misma base masiva (`foodstore_tp3_carga`), con foco en joins múltiples, funciones de ventana y subconsultas correlacionadas.
+Continuación sobre `foodstore_tp3_carga`, con joins múltiples, funciones de ventana y subconsultas correlacionadas.
 
-**Parte 1 — Consultas analíticas lentas con múltiples `JOIN`.** Se identificó el algoritmo elegido por el optimizador (`Hash Join`, `Parallel Hash Join`) antes y después de indexar. El índice de la Consulta A (`idx_tp4_a_estado_id`) se aceptó: pasó a `Parallel Index Only Scan` con `Heap Fetches: 0`, de 699,55 ms a 164,25 ms. El de la Consulta B se descartó: el planificador no lo usó y el tiempo quedó prácticamente igual (304,75 ms → 305,60 ms).
+**Parte 1 — Consultas analíticas e índices.**
 
-**Parte 2 — Lectura crítica de un plan de join real** (la Consulta A de la Parte 1), explicado nodo por nodo por IA y contrastado contra el plan real: de 7 afirmaciones evaluadas, 6 correctas, 1 parcialmente correcta (`Heap Fetches: 0` se atribuyó solo a que el índice es covering, sin mencionar que también depende del mapa de visibilidad) y 1 marcada como falsa a modo de control (el costo estimado del planificador no equivale a milisegundos).
+| Consulta | Tiempo anterior | Tiempo posterior | Resultado |
+|---|---:|---:|---|
+| A — Facturación por categoría y mes | 699.550 ms | 164.254 ms | Índice utilizado; mejora observada de aproximadamente 4.26 veces |
+| B — Ranking de clientes por gasto | 304.753 ms | 305.604 ms | Índice no utilizado; sin mejora |
 
-**Parte 3 — Dos consultas bajo especificación precisa**, cada una con una segunda versión de estructura distinta y verificación de equivalencia con `EXCEPT`:
+En A, `idx_tp4_a_estado_id` permitió Parallel Index Only Scan con Heap Fetches: 0. Los algoritmos Hash Join y Parallel Hash Join y los dos workers se conservaron: el cambio relevante fue el acceso a pedido.
 
-- **Ranking (`DENSE_RANK`):** la primera alternativa propuesta (subconsulta correlacionada con `COUNT(*)`) fue **rechazada** — el `EXCEPT` mostró 19.433 filas de diferencia, porque `COUNT(*)` replica la semántica de `RANK()` (deja huecos tras un empate) y no la de `DENSE_RANK()`. Se corrigió a `COUNT(DISTINCT total_gastado)`, confirmado con 0 diferencias en ambos sentidos.
-- **Subconsulta correlacionada** (productos con precio mayor al promedio de su categoría): la alternativa con `JOIN` sobre un promedio pre-agregado fue equivalente (0 diferencias) pero resolvió en segundos lo que la versión original (O(n²) sobre 50k productos) tardaba minutos.
+En B, el índice parcial conservaba la mayoría de las filas y el planificador mantuvo Parallel Seq Scan. Una prueba independiente con work_mem de 64 MB dio 250.280 ms; ese resultado corresponde al cambio de memoria, no al índice.
 
-**Parte 4 — Competencia de optimización** (top 3 productos por facturación y categoría, últimos 6 meses). El cuello de botella real resultó ser un `Sort` con *spill* a disco (`external merge Disk`), no un `Seq Scan` como se sospechaba inicialmente. Subir `work_mem` de sesión a 8MB eliminó el spill (`quicksort Memory`) y mejoró el tiempo de 621,0 ms a 539,1 ms (~13%, promedio de 3 corridas en bloque; en la comparación intercalada posterior, solo `work_mem` promedió 571,4 ms). Un índice parcial adicional pareció sumar otra mejora en una primera medición en bloques, pero un control de sesgo con corridas intercaladas (A-B-A-B-A-B) mostró los promedios exactamente empatados: la ventaja inicial era enteramente efecto de caché acumulado, no del índice, que se descartó.
+**Ambos ensayos de índices terminaron con ROLLBACK y no dejaron esos índices aplicados.** La decisión “aceptar” de A expresa la evaluación favorable del ensayo, no una instalación permanente.
+
+Fuentes: [tabla comparativa](TP4_Reportes_Analiticos/Parte1/tabla_comparativa.md), [plan A posterior](TP4_Reportes_Analiticos/Parte1/plan_a_despues.md) y [plan B posterior](TP4_Reportes_Analiticos/Parte1/plan_b_despues.md).
+
+**Parte 2 — Lectura crítica del plan A.** La tabla contiene **siete afirmaciones: cinco correctas, una parcialmente correcta y una falsa**. La parcial atribuye Heap Fetches: 0 solo a que el índice contiene las columnas necesarias, omitiendo el mapa de visibilidad. La falsa equipara el costo estimado con milisegundos. Fuente: [tabla de lectura crítica](TP4_Reportes_Analiticos/Parte2/plan_a_explicacion_ia.md).
+
+**Parte 3 — Consultas bajo especificación.** La alternativa inicial al ranking DENSE_RANK, basada en COUNT(*), produjo 19433 diferencias y fue rechazada. Se corrigió a COUNT(DISTINCT total_gastado), con cero diferencias en ambos sentidos. La alternativa con JOIN sobre un promedio preagregado también fue equivalente a la subconsulta correlacionada y redujo sustancialmente su tiempo. Fuente: [DUIA de Parte 3](TP4_Reportes_Analiticos/Parte3/DUIA_Parte3.md).
+
+**Parte 4 — Competencia de optimización.** El cuello de botella fue un Sort con derrame a disco. Subir work_mem local a 8 MB eliminó el derrame. Se conservan los resultados históricos de las distintas etapas: **621.0 ms → 539.1 ms** en la comparación inicial en bloques y **571.4 ms** para solo work_mem en el control intercalado posterior.
+
+El control A-B-A-B-A-B obtuvo el mismo promedio de **571.4 ms** con y sin el índice parcial adicional, por lo que se descartó atribuirle una mejora. La estrategia final no dejó cambios permanentes de esquema: work_mem se configura localmente para ejecutar la consulta. Fuente: [registro de competencia](TP4_Reportes_Analiticos/Parte4/registro_competencia.md).
 
 ## TP5 — Índices, vistas y vista materializada
 
-Continuación de la base masiva de TP3/TP4 (~200.000 pedidos, 499.571 líneas de detalle), integrando el aporte de cada integrante sobre el mismo esquema heredado, con especificaciones propias en Kiro y verificación propia antes de aceptar cada pieza.
+Se integraron las tres partes sobre el esquema y la base masiva heredados, con especificaciones y revisión de las propuestas.
 
-**Parte A — Plan de indexado** sobre 4 consultas reales con `Seq Scan` (ranking de clientes, productos vs. promedio de categoría, top 3 por facturación en los últimos 6 meses y productos de una categoría en un rango de precio). Quedaron 2 índices aplicados en firme: el de Q6 (~41%) y el de Q2 (~37%, `Seq Scan` → `Bitmap Heap Scan`). Se descartaron el índice parcial de Q5 (ignorado por el planificador, por baja selectividad), un índice sobre `detalle_pedido(id_pedido)` redundante con la PK `(id_pedido, id_producto)`, el BRIN sobre `fecha_hora` (correlación física ~0) y el B-tree sobre `fecha_hora` de Q4: se había aceptado con ~8,9%, pero tras la devolución de la cátedra se remidió con 3 rondas archivadas, no mejoró de forma consistente (en las rondas archivadas, la lectura de `pedido` con índice terminaba en un solo proceso) y se descartó. El costo de escritura se midió en `producto` (+47% con los dos índices) y en `detalle_pedido` (sin efecto relevante), y las mediciones que sostienen cada decisión final tienen su salida archivada.
+**Parte A — Plan de indexado.** Se documentó la aplicación de dos índices: Q6, con aproximadamente 41 % de mejora, y Q2, con aproximadamente 37 % y cambio de Seq Scan a Bitmap Heap Scan.
 
-**Parte B — Vistas y seguridad por roles.** 5 vistas (`vistas.sql`): productos vigentes con categoría, ventas agregadas por cliente, pedidos con datos del cliente, detalle de pedido con nombre de producto, y una vista de seguridad (`v_usuario_publico`) que expone la tabla `usuario` sin la columna `contrasena`. Como el esquema heredado no tenía tabla de autenticación, se agregó `usuario` como tabla nueva sin tocar `cliente`. Un rol de solo lectura (`tp5_reportes`, `NOLOGIN`) tiene `SELECT` sobre las 5 vistas pero **no** sobre las tablas base (verificado con un intento real de acceso denegado). Cada vista se verificó contra una consulta manual equivalente con `EXCEPT` en ambos sentidos (`verificacion_vistas.sql`).
+Se descartaron:
 
-**Parte C — Vista materializada** `mv_resumen_ventas_categoria_mes` (facturación, pedidos y unidades por categoría y mes), creada con `WITH DATA` e índice único para `REFRESH CONCURRENTLY`. Medición archivada contra la consulta directa sobre las tablas base: **976,1 ms → 0,054 ms** (3 rondas; la medición original de 618 ms → 0,073 ms no había quedado archivada). Tras la devolución se ejecutó y se midió `REFRESH CONCURRENTLY` (no bloquea las lecturas, a diferencia del `REFRESH` normal) y se analizó qué ve el usuario entre dos `REFRESH`; se recomienda un `REFRESH CONCURRENTLY` diario, de noche. Aplicada en firme, con prueba reversible previa (`WITH NO DATA` → `REFRESH` → `EXPLAIN ANALYZE` → `DROP`, luego reaplicación con `WITH DATA`).
+- El índice parcial de Q5, ignorado por baja selectividad.
+- El índice de `detalle_pedido(id_pedido)`, redundante con la PK compuesta.
+- El BRIN de fecha_hora, con correlación física próxima a cero.
+- El B-tree de fecha_hora de Q4, inicialmente aceptado con aproximadamente 8.9 %, pero descartado después de tres rondas archivadas sin mejora consistente.
 
-DUIA consolidada en `TP5_Indices_Vistas/duia.md`.
+El costo de escritura se midió en producto, con aproximadamente **47 % adicional** con los dos índices, y en detalle_pedido, sin efecto relevante. Fuentes: [informe de mediciones](TP5_Indices_Vistas/informe_mediciones.md) y [DUIA](TP5_Indices_Vistas/duia.md).
+
+**Parte B — Vistas y seguridad.** Se crearon cinco vistas, incluida `v_usuario_publico`, que omite contrasena. Se agregó usuario sin modificar cliente. El rol `tp5_reportes`, NOLOGIN, recibió SELECT sobre las vistas y no sobre las tablas base; se registró un intento real de acceso denegado. Las vistas se contrastaron con consultas manuales mediante EXCEPT bidireccional.
+
+**Parte C — Vista materializada.** Se documentó `mv_resumen_ventas_categoria_mes`, con facturación, pedidos y unidades por categoría y mes, WITH DATA e índice único para REFRESH CONCURRENTLY.
+
+La medición archivada fue **976.1 ms → 0.054 ms**, en tres rondas. Se conserva la distinción respecto de la medición anterior de 618 ms → 0.073 ms, que no había quedado archivada. Se ejecutó y midió REFRESH CONCURRENTLY y se analizó la desactualización entre refrescos, recomendándose un refresco diario nocturno para ese reporte.
+
+La documentación registra una aplicación permanente posterior a una prueba reversible. Esto describe la decisión y ejecución históricas de TP5, no una verificación actual de todas las bases o copias. Fuente: [DUIA de TP5](TP5_Indices_Vistas/duia.md).
+
+Algunos scripts de medición de TP5 confirman cambios de índices para comparar escenarios sobre la base de carga. Esa característica histórica no debe generalizarse a los ensayos de TP4 o TP6 que finalizaron con ROLLBACK.
+
+## TP6 — FNBC y desnormalización controlada
+
+Se trabajó sobre `foodstore_copia_trabajo`. ChatGPT y Codex CLI se utilizaron para el análisis, las propuestas SQL, la revisión de evidencias y la documentación, con revisión y autorización humana. Las mediciones fueron ejecutadas por el grupo; no se presentan como pruebas realizadas por la IA.
+
+Documentación: [README de TP6](TP6_FNBC_Desnormalizacion/README.md), [informe final Markdown](TP6_FNBC_Desnormalizacion/informe_final_tp6.md) e [informe final PDF](TP6_FNBC_Desnormalizacion/informe_final_tp6.pdf).
+
+### Parte 1 — FNBC
+
+Se analizó R(L,D,C), con L = lote, D = depósito y C = responsable de control, y las dependencias **LD → C** y **C → D**. La pertenencia a depósito corresponde a responsables de control; no implica que todos los usuarios tengan depósito ni que un depósito tenga un solo responsable.
+
+Las claves candidatas completas son **LD y LC**, ambas mínimas. Todos los atributos son primos. La relación cumple 3FN, pero viola FNBC porque C → D tiene un determinante que no es superclave: C⁺ = CD.
+
+Se descompuso en:
+
+- `responsable_deposito(C,D)`, con PK C.
+- `control_lote(L,C)`, con PK LC.
+
+Ambas relaciones quedan en FNBC. La reunión es **sin pérdida** porque el atributo común C determina CD. Sin embargo, **LD → C no se preserva mediante las restricciones locales**: dos responsables del mismo depósito podrían controlar el mismo lote sin violar las PK/FK descompuestas. Controlar esa regla exigiría una validación entre tablas, no implementada en esta parte.
+
+La migración se realizó mediante INSERT ... SELECT DISTINCT y se reconstruyó la relación con una vista. El EXCEPT bidireccional fue vacío, los conteos fueron **3/2/3/3** y se reconstruyeron exactamente:
+
+| Lote | Depósito | Responsable |
+|---|---|---|
+| 501 | 30 | 801 |
+| 502 | 30 | 801 |
+| 503 | 31 | 802 |
+
+El script terminó con **ROLLBACK**, por lo que la migración no quedó persistida.
+
+Fuentes: [informe de Parte 1](TP6_FNBC_Desnormalizacion/Parte1_FNBC/informe_parte1_fnbc.md), [script](TP6_FNBC_Desnormalizacion/Parte1_FNBC/tp_fnbc_control_lote.sql) y [evidencia](TP6_FNBC_Desnormalizacion/Parte1_FNBC/evidencias/evidencia_fnbc_20261008_222128.txt).
+
+### Parte 2 — Desnormalización del top diario
+
+Se adaptó la consulta al esquema real mediante `dp.id_pedido`, `dp.id_producto`, `pr.id_categoria` y un intervalo semiabierto sobre `ped.fecha_hora`. Se conservó SUM(subtotal), GROUP BY nombre y LIMIT 5.
+
+La fecha histórica reproducible fue **25/06/2026 en America/Buenos_Aires**, en sustitución de CURRENT_DATE porque la carga no contenía pedidos del día de ejecución. El ensayo corregido incorpora `pedido.eliminado` y `detalle_pedido.eliminado`, ambos BOOLEAN NOT NULL DEFAULT FALSE, como estados propios independientes. La consulta normalizada exige `dp.eliminado = FALSE AND ped.eliminado = FALSE`; la desnormalizada exige `dp.eliminado = FALSE AND dp.pedido_eliminado_cache = FALSE`, sin volver a unir pedido. No se agregan filtros por estado ni por activo.
+
+La carga contiene **200005 pedidos, 499571 detalles, 50003 productos y 2 categorías**. El límite de cinco se mantiene, aunque solo se obtienen dos categorías.
+
+Se eligieron columnas precalculadas con disparadores porque el plan inicial histórico mostró un recorrido de pedido y búsquedas repetidas en producto. Copiar al detalle los atributos de consulta permite evitar esos recorridos y sincronizar cambios dentro de la transacción. Una vista materializada con refresco nocturno no satisface el requisito de actualización frecuente. La medición inicial corregida realizada por el grupo registró **62.538 ms** y **8455 shared hit**; es una referencia previa a las copias y no interviene en el cálculo de mejora entre rondas.
+
+Dentro del ensayo se agregaron los atributos propios de borrado lógico y tres copias redundantes: `fecha_hora_pedido_cache`, `id_categoria_cache` y `pedido_eliminado_cache`, manteniendo el índice sobre la fecha copiada. Los triggers recalculan las tres copias al insertar o actualizar detalles y propagan cambios de fecha o eliminado del pedido y categoría del producto. `pedido_eliminado_cache` copia exclusivamente `pedido.eliminado`, sin modificar el estado propio del detalle. Restaurar el pedido no restaura detalles eliminados individualmente. El nombre de categoría no se copia: se conserva el JOIN con categoria. Retirar la desnormalización permitiría volver a la consulta normalizada conservando los atributos propios de borrado lógico.
+
+**Resultados corregidos de Parte 2 — ejecución del grupo del 09/10/2026.**
+
+La comparación directa se realizó después de cargar, indexar y ejecutar ANALYZE:
+
+| Medición | Normalizada (ms) | Desnormalizada (ms) | Normalizada shared hit | Desnormalizada shared hit |
+|---|---:|---:|---:|---:|
+| Ronda 1 | 49.291 | 1.980 | 10942 | 565 |
+| Ronda 2 | 47.556 | 1.323 | 10942 | 565 |
+| Promedio | 48.4235 | 1.6515 | 10942 | 565 |
+
+La reducción temporal calculada sobre los promedios es **96.59 %**, con cociente normalizada/desnormalizada de **29.32**. La mejora corresponde al **conjunto columnas redundantes más índice**, sin separar el aporte de cada componente. Los **62.538 ms** iniciales no intervienen en estos cálculos. Los shared hit representan accesos resueltos en caché, no lecturas físicas ni páginas únicas.
+
+Ambas consultas corregidas devolvieron **Bebidas: 5589534.40** y **Pizzas: 5215387.22**. Las evidencias aportadas por el grupo registran auditoría inicial y posterior sin diferencias, EXCEPT bidireccional del top vacío y **EXCEPT ALL bidireccional de filas participantes vacío**. La auditoría incluye también registros eliminados.
+
+Se superaron las pruebas secuenciales de las cuatro combinaciones lógicas, restauraciones independientes, inserción bajo pedido eliminado, traslado del detalle a un pedido vigente y retorno, cambio simultáneo de fecha y eliminado y corrección de cache arbitrario, además de las pruebas anteriores de sincronización y DELETE/CASCADE. Los fixtures se deshicieron mediante **ROLLBACK TO SAVEPOINT antes de medir**, sin consumir secuencias.
+
+Ambos ensayos corregidos de Parte 2 contienen DDL transaccional —incluida la medición inicial, que ya no es READ ONLY— y terminaron con **ROLLBACK final**, registrado en los TXT completos. Según la comprobación posterior informada por el grupo, quedaron **cero columnas añadidas**, **200005 pedidos** y **499571 detalles**; ese control posterior no está incluido en los dos TXT.
+
+**Antecedentes históricos del 08/10/2026 — versión sin filtros de borrado lógico.** La medición inicial histórica fue de **47.151 ms**. Las siguientes rondas, sus buffers y su reducción corresponden a esa versión; se conservan sin mezclarlos con los resultados corregidos.
+
+La comparación directa, posterior a carga, indexación y ANALYZE, fue:
+
+| Medición | Normalizada (ms) | Desnormalizada (ms) | Normalizada shared hit | Desnormalizada shared hit |
+|---|---:|---:|---:|---:|
+| Ronda 1 | 42.807 | 1.855 | 10942 | 564 |
+| Ronda 2 | 41.920 | 1.815 | 10942 | 564 |
+| Promedio | 42.3635 | 1.835 | 10942 | 564 |
+
+La reducción de tiempo observada fue **95.67 %**, con cociente **23.09**, atribuible al **conjunto columnas más índice**. Los 47.151 ms iniciales no se usaron para calcular esa mejora.
+
+La normalizada mantiene Parallel Seq Scan de pedido y búsquedas mediante Nested Loop en detalle y producto. La desnormalizada utiliza Bitmap Index Scan y Bitmap Heap Scan sobre detalle y conserva únicamente el JOIN con categoria.
+
+Ambas devolvieron **Bebidas: 5589534.40** y **Pizzas: 5215387.22**. La auditoría completa de las copias y el EXCEPT bidireccional fueron vacíos. Se superaron pruebas secuenciales de inserción, actualización, cambio de padres, propagación, cambio de nombre, borrado y CASCADE, deshechas con SAVEPOINT antes de medir y sin consumir secuencias.
+
+**Límites:** la sincronización soporta READ COMMITTED y puede generar interbloqueos que requieran reintentar la transacción completa. **La concurrencia entre sesiones no fue probada y el costo adicional de escritura no fue cuantificado.** Los cambios de padres pueden propagar actualizaciones a muchos detalles.
+
+Las mediciones ocurrieron dentro de la transacción de carga, con calentamiento previo, orden alternado y bloqueos ACCESS EXCLUSIVE que impidieron actividad concurrente. No hubo VACUUM. Dos rondas y dos categorías no constituyen un benchmark exhaustivo.
+
+El script terminó con **ROLLBACK**: las columnas, el índice y los triggers no quedaron instalados.
+
+Fuentes: [informe de Parte 2](TP6_FNBC_Desnormalizacion/Parte2_Desnormalizacion/informe_parte2_desnormalizacion.md), [medición inicial](TP6_FNBC_Desnormalizacion/Parte2_Desnormalizacion/medir_top_categorias_antes.sql), [script de desnormalización](TP6_FNBC_Desnormalizacion/Parte2_Desnormalizacion/tp_desnormalizacion_top_categorias.sql).
+
+Evidencias corregidas aportadas por el grupo:
+[medición inicial con borrado lógico](TP6_FNBC_Desnormalizacion/Parte2_Desnormalizacion/evidencias/evidencia_top_antes_logico_20261009_092704.txt) y
+[pruebas, auditoría y comparación corregidas](TP6_FNBC_Desnormalizacion/Parte2_Desnormalizacion/evidencias/evidencia_top_desnormalizacion_logico_20261009_092837.txt).
+
+Antecedentes históricos sin filtros lógicos:
+[medición inicial anterior](TP6_FNBC_Desnormalizacion/Parte2_Desnormalizacion/evidencias/evidencia_top_antes_20261008_225517.txt) y
+[comparación anterior](TP6_FNBC_Desnormalizacion/Parte2_Desnormalizacion/evidencias/evidencia_top_desnormalizacion_20261008_232126.txt).
 
 ## Conclusión
 
-A lo largo de los cinco TP se sostuvo el mismo criterio de trabajo: la IA (Kiro para especificar; OpenCode, Copilot y, en las correcciones del TP5, Claude Code y Claude para generar código) propone, pero **nunca decide**. Todo script se leyó antes de ejecutarse, los índices y los triggers se probaron primero dentro de una transacción antes de aplicarse en firme (las vistas del TP5, que se deshacen con un `DROP`, se validaron con `EXCEPT` antes de darlas por definitivas; en TP5, sobre la misma base de carga y no sobre una copia: los scripts de medición de Q4 y de escritura en `producto` confirman a propósito sus `DROP INDEX`/`CREATE INDEX` para medir con y sin índice, y dejan la base en su estado final), y toda afirmación de rendimiento o de equivalencia se contrastó con el motor real — con `EXPLAIN ANALYZE`, con `EXCEPT` bidireccional, o con controles de sesgo de medición (corridas intercaladas).
+Los seis trabajos muestran una progresión desde el diseño relacional hasta la optimización y la redundancia controlada. Las propuestas de IA se sometieron a revisión humana y las afirmaciones de equivalencia o rendimiento se contrastaron con evidencias, sin confundir costos estimados con tiempos ni decisiones de aceptación con instalaciones permanentes.
 
-Ese criterio evitó errores concretos en cada etapa: un bug de aleatorización no correlacionada en la carga masiva (TP3), una no-equivalencia real entre `COUNT(*)` y `COUNT(DISTINCT ...)` al replicar `DENSE_RANK` (TP4), una mejora de índice que resultó ser enteramente efecto de caché (TP4), y un trigger de transición de estado con un caso límite sin cubrir (TP2). En ningún caso se aceptó una propuesta de la IA por su explicación: se aceptó (o se descartó) por lo que el motor efectivamente devolvió.
+Las revisiones permitieron identificar problemas concretos: aleatorización no correlacionada en TP3, diferencias entre COUNT(*) y COUNT(DISTINCT ...) en TP4, sesgo de caché en mediciones de índices y un caso límite de transición de estado en TP2. TP6 añadió la distinción entre reunión sin pérdida y preservación de dependencias, y una comparación medida de columnas redundantes más índice.
 
-El resultado es una base FoodStore que evolucionó de un modelo normalizado (TP1) a un esquema con integridad reforzada por triggers y aislamiento de transacciones correcto (TP2), luego cargado a escala real y optimizado con evidencia medible (TP3, TP4), y finalmente enriquecido con índices, vistas de seguridad por rol y una vista materializada de reporte (TP5) — cada decisión de diseño respaldada por una medición reproducible, no por una suposición.
+El informe conserva los resultados históricos y sus condiciones. Los ensayos de índices de TP4 Parte 1 y las dos implementaciones de TP6 finalizaron con ROLLBACK. Las aplicaciones permanentes registradas en otras etapas no se extrapolan al estado actual de `foodstore_copia_trabajo`.
+
+La validación de TP6 demuestra equivalencia y sincronización secuencial para los casos ensayados, pero deja pendientes las pruebas concurrentes y la cuantificación del costo de escritura. Por ello, los resultados de lectura respaldan la adaptación evaluada sin presentarla como una instalación persistente ni como una garantía de rendimiento bajo cualquier carga.

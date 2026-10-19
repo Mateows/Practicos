@@ -1,0 +1,9 @@
+                                                                  QUERY PLAN                                                                   
+-----------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.29..7.00 rows=50 width=28) (actual time=0.104..0.441 rows=50 loops=1)
+   ->  Index Scan using idx_pedido_estado_fecha on pedido  (cost=0.29..6748.76 rows=50341 width=28) (actual time=0.101..0.434 rows=50 loops=1)
+         Index Cond: (estado = 'PENDIENTE'::estado_pedido_enum)
+ Planning Time: 2.973 ms
+ Execution Time: 0.908 ms
+(5 filas)
+
