@@ -1,0 +1,5 @@
+[2026-10-19 20:19:05] [INFO] Iniciando respaldo de la base 'foodstore'.
+[2026-10-19 20:19:05] [INFO] Archivo de salida: C:\Users\Mateows\Desktop\2do AÒo 1er Semestre\Base de Datos II\Practicos\TP8_Mantenimiento_FoodStore\backups\respaldo_foodstore_20261019_201905.dump
+[2026-10-19 20:19:06] [INFO] Respaldo completado exitosamente.
+[2026-10-19 20:19:06] [INFO] Tama√±o del archivo: 17.47 KB
+[2026-10-19 20:19:06] [INFO] Ruta: C:\Users\Mateows\Desktop\2do AÒo 1er Semestre\Base de Datos II\Practicos\TP8_Mantenimiento_FoodStore\backups\respaldo_foodstore_20261019_201905.dump

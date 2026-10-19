@@ -1,0 +1,4 @@
+[2026-10-19 20:17:23] [INFO] Iniciando respaldo de la base 'foodstore'.
+[2026-10-19 20:17:23] [INFO] Archivo de salida: C:\Users\Mateows\Desktop\2do Año 1er Semestre\Base de Datos II\Practicos\TP8_Mantenimiento_FoodStore\backups\respaldo_foodstore_20261019_201723.dump
+[2026-10-19 20:17:23] [ERROR] pg_dump no encontrado en: C:\Program Files\PostgreSQL\16\bin\pg_dump.exe
+[2026-10-19 20:17:23] [ERROR] Ajusta la variable PG_DUMP en el script y vuelve a ejecutar.
